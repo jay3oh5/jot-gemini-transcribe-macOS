@@ -59,6 +59,14 @@ public enum KeychainStore {
             attributes[kSecValueData as String] = Data(key.utf8)
             if dataProtection {
                 attributes[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+            } else {
+                // In login keychain (dev and ad-hoc builds): create an open access control list
+                // so that updated builds with a new cdhash can access the stored API key
+                // without triggering the macOS Security password authorization dialog on every upgrade.
+                var access: SecAccess?
+                if SecAccessCreate("Jot — Gemini API key" as CFString, nil, &access) == errSecSuccess, let access {
+                    attributes[kSecAttrAccess as String] = access
+                }
             }
             let status = SecItemAdd(attributes as CFDictionary, nil)
             if status == errSecSuccess {

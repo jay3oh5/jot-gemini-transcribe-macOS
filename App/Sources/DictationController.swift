@@ -114,9 +114,10 @@ final class DictationController {
     }
 
     private var needsOnboarding: Bool {
-        // A deliberate "I'll add it later" is remembered — the wizard must not
-        // re-trap that user every launch; the menu bar carries the key nudge.
-        (KeychainStore.loadAPIKey() == nil && !SettingsStore().hasCompletedOnboarding)
+        // Once a user has completed onboarding, an app update or transient permission
+        // check must NEVER force them through the wizard again.
+        guard !SettingsStore().hasCompletedOnboarding else { return false }
+        return KeychainStore.loadAPIKey() == nil
             || !AXIsProcessTrusted()
             || AVCaptureDevice.authorizationStatus(for: .audio) != .authorized
     }

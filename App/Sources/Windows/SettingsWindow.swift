@@ -566,14 +566,24 @@ struct AdvancedPane: View {
         switch keyStatus {
         case .missing:
             Image(systemName: "key.slash").foregroundStyle(.secondary)
+                .help("API key is missing")
+                .accessibilityLabel("API key is missing")
         case .stored, .savedOffline:
             Image(systemName: "checkmark.circle").foregroundStyle(.secondary)
+                .help("API key is stored")
+                .accessibilityLabel("API key is stored")
         case .validating:
             ProgressView().controlSize(.small)
+                .help("Validating API key")
+                .accessibilityLabel("Validating API key")
         case .valid:
             Image(systemName: "checkmark.circle.fill").foregroundStyle(JotUI.Colors.success)
+                .help("API key is valid")
+                .accessibilityLabel("API key is valid")
         case .invalid, .saveFailed:
             Image(systemName: "xmark.circle.fill").foregroundStyle(JotUI.Colors.error)
+                .help("API key is invalid or failed to save")
+                .accessibilityLabel("API key is invalid or failed to save")
         }
     }
 

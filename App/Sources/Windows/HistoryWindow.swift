@@ -234,6 +234,7 @@ struct HistoryPane: View {
             }
             .buttonStyle(.plain)
             .help("Discard this recording")
+            .accessibilityLabel("Discard recording")
         }
         .padding(.vertical, 3)
     }
@@ -441,6 +442,7 @@ private struct RecordDetailSheet: View {
                     Image(systemName: "trash")
                 }
                 .help("Delete this dictation")
+                .accessibilityLabel("Delete dictation")
             }
 
             Divider()

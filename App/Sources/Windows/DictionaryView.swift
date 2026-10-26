@@ -63,6 +63,8 @@ struct DictionaryView: View {
             }
             .buttonStyle(.plain)
             .disabled(newTerm.isEmpty)
+            .help("Add word")
+            .accessibilityLabel("Add word")
         }
         .padding(JotUI.Spacing.s)
         .background(RoundedRectangle(cornerRadius: JotUI.Radius.medium).fill(JotUI.Colors.surfaceContainer))
@@ -98,7 +100,8 @@ struct DictionaryView: View {
                         .foregroundStyle(entry.starred ? JotUI.Colors.gYellow : JotUI.Colors.onSurfaceVariant.opacity(0.5))
                 }
                 .buttonStyle(.plain)
-                .help("Starred words are prioritized")
+                .help(entry.starred ? "Unstar word" : "Star word")
+                .accessibilityLabel(entry.starred ? "Unstar word" : "Star word")
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(entry.term)
@@ -120,6 +123,8 @@ struct DictionaryView: View {
                         .foregroundStyle(JotUI.Colors.onSurfaceVariant)
                 }
                 .buttonStyle(.plain)
+                .help("Remove word")
+                .accessibilityLabel("Remove word")
             }
             .padding(.vertical, 2)
         }

@@ -39,6 +39,7 @@ public struct NoiseFloorEstimator: Sendable {
     /// floor from nine minutes ago is not this room any more.
     private let capacity: Int
     private var samples: [Double] = []
+    private var writeIndex: Int = 0
 
     public private(set) var peakDB: Double = AudioLevelCurve.floorDBFS
     public private(set) var sampleCount: Int = 0
@@ -52,8 +53,14 @@ public struct NoiseFloorEstimator: Sendable {
         let db = AudioLevelCurve.dBFS(fromLevel: level)
         peakDB = max(peakDB, db)
         sampleCount += 1
-        if samples.count == capacity { samples.removeFirst() }
-        samples.append(db)
+        // Performance optimization: Use ring buffer overwrite O(1) instead of
+        // array.removeFirst() O(N) which shifts up to 599 elements per ingested sample.
+        if samples.count < capacity {
+            samples.append(db)
+        } else {
+            samples[writeIndex] = db
+            writeIndex = (writeIndex + 1) % capacity
+        }
     }
 
     /// The room, in dBFS — the 10th percentile of everything heard so far.

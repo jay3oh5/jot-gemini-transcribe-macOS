@@ -14,6 +14,12 @@ Smart dictation for macOS that puts polished text wherever your cursor is.
 
 This is not an officially supported Google product.
 
+> [!TIP]
+> **Fork Enhancements (v0.4.1):**
+> - **Universal Binary Support:** Runs natively on both Intel (`x86_64`) and Apple Silicon (`arm64`) Macs.
+> - **CoreAudio Stability:** Eliminates background audio engine teardown crashes during device switches, headphone changes, and sleep/wake.
+> - **Direct Download:** Download pre-built releases directly from [GitHub Releases](https://github.com/jay3oh5/jot-gemini-transcribe-macOS/releases).
+
 ---
 
 ## What it is

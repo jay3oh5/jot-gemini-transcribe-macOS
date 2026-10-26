@@ -305,9 +305,29 @@ struct DictationPane: View {
     @State private var showIdleDot = SettingsStore().showIdleIndicator
     @State private var noiseHandling = SettingsStore().experimentalNoiseHandling
     @State private var liveTranscription = SettingsStore().liveTranscription
+    
+    @State private var inputs: [AudioInputDevices.Device] = []
+    @State private var selectedInput: AudioDeviceID?
 
     var body: some View {
         Form {
+            Section {
+                Picker("Microphone", selection: Binding(
+                    get: { selectedInput ?? AudioInputDevices.currentDefaultID() },
+                    set: { newValue in
+                        guard let newValue, newValue != selectedInput else { return }
+                        selectedInput = newValue
+                        AudioInputDevices.setDefault(id: newValue)
+                    }
+                )) {
+                    ForEach(inputs) { device in
+                        Text(device.name).tag(Optional(device.id))
+                    }
+                }
+            } footer: {
+                Text("This sets the default macOS input device.")
+            }
+            
             Section {
                 Toggle("Sounds", isOn: $sounds)
                     .onChange(of: sounds) { _, enabled in settings.setSoundsEnabled(enabled) }
@@ -366,6 +386,14 @@ struct DictationPane: View {
                     }
                 }
             }
+        }
+        .onAppear {
+            inputs = AudioInputDevices.list()
+            selectedInput = AudioInputDevices.currentDefaultID()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .jotDefaultInputChanged).receive(on: RunLoop.main)) { _ in
+            inputs = AudioInputDevices.list()
+            selectedInput = AudioInputDevices.currentDefaultID()
         }
         .onReceive(NotificationCenter.default.publisher(for: .gtSettingDidChange).receive(on: RunLoop.main)) { note in
             if note.object as? String == "smartTranscription" {

@@ -27,9 +27,8 @@ jobs:
             -project Jot.xcodeproj \
             -scheme Jot \
             -configuration Debug \
-            -destination 'platform=macOS' \
-            -derivedDataPath build/DerivedData \
-            CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO DEVELOPMENT_TEAM=
+            -destination 'platform=macOS,arch=arm64' \
+            -derivedDataPath build/DerivedData
 
       - name: Package App into ZIP
         run: |

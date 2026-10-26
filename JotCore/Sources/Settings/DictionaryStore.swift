@@ -19,19 +19,21 @@ import Foundation
 /// UserDefaults-backed — entries are small and this keeps v1 dependency-free.
 public struct DictionaryEntry: Codable, Equatable, Identifiable, Sendable {
     public var id: UUID
-    /// The correct term ("Kubernetes", "Ammaar", "gRPC"). 1–60 chars.
+    /// The correct term ("Kubernetes", "Ammaar", "gRPC"). 1–60 chars for words, unlimited for snippets.
     public var term: String
-    /// Optional misspelling the model tends to produce ("cooper netties").
+    /// Optional misspelling the model tends to produce ("cooper netties"). For snippets, this is the trigger phrase.
     public var misspelling: String?
     public var starred: Bool
     public var createdAt: Date
+    public var isSnippet: Bool?
 
-    public init(term: String, misspelling: String? = nil, starred: Bool = false) {
+    public init(term: String, misspelling: String? = nil, starred: Bool = false, isSnippet: Bool? = nil) {
         self.id = UUID()
         self.term = term
         self.misspelling = misspelling
         self.starred = starred
         self.createdAt = Date()
+        self.isSnippet = isSnippet
     }
 }
 
@@ -56,12 +58,28 @@ public struct DictionaryStore: Sendable {
     }
 
     @discardableResult
-    public func add(term: String, misspelling: String? = nil) -> Bool {
+    public func add(term: String, misspelling: String? = nil, isSnippet: Bool = false) -> Bool {
         let trimmed = term.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard (1...60).contains(trimmed.count) else { return false }
+        if !isSnippet {
+            guard (1...60).contains(trimmed.count) else { return false }
+        } else {
+            guard !trimmed.isEmpty else { return false }
+            guard let m = misspelling?.trimmingCharacters(in: .whitespacesAndNewlines), !m.isEmpty else { return false }
+        }
         var current = entries()
-        guard !current.contains(where: { $0.term.lowercased() == trimmed.lowercased() }) else { return false }
-        current.append(DictionaryEntry(term: trimmed, misspelling: misspelling?.trimmingCharacters(in: .whitespacesAndNewlines)))
+        
+        let matchCheck: (DictionaryEntry) -> Bool
+        if isSnippet {
+            // For snippets, prevent duplicate triggers
+            let trigger = misspelling?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() ?? ""
+            matchCheck = { ($0.misspelling?.lowercased() ?? "") == trigger && ($0.isSnippet == true) }
+        } else {
+            matchCheck = { $0.term.lowercased() == trimmed.lowercased() && ($0.isSnippet != true) }
+        }
+        
+        guard !current.contains(where: matchCheck) else { return false }
+        
+        current.append(DictionaryEntry(term: trimmed, misspelling: misspelling?.trimmingCharacters(in: .whitespacesAndNewlines), isSnippet: isSnippet ? true : nil))
         save(current)
         return true
     }
@@ -82,7 +100,7 @@ public struct DictionaryStore: Sendable {
 
     /// Vocabulary for the cleanup prompt: starred first, then newest. Cap 100.
     public func vocabulary() -> [String] {
-        let sorted = entries().sorted {
+        let sorted = entries().filter { $0.isSnippet != true }.sorted {
             if $0.starred != $1.starred { return $0.starred }
             return $0.createdAt > $1.createdAt
         }
@@ -122,6 +140,7 @@ public struct DictionaryStore: Sendable {
     /// both prompt inputs, not just one.
     public func spellings() -> [(wrong: String, right: String)] {
         entries()
+            .filter { $0.isSnippet != true }
             .sorted {
                 if $0.starred != $1.starred { return $0.starred }
                 return $0.createdAt > $1.createdAt
@@ -136,18 +155,19 @@ public struct DictionaryStore: Sendable {
     /// Deterministic rules for the ReplacementEngine (ALL entries with misspellings).
     public func replacementRules() -> [ReplacementEngine.Rule] {
         entries().compactMap { entry in
-            entry.misspelling.flatMap { $0.isEmpty ? nil : ReplacementEngine.Rule(wrong: $0, right: entry.term) }
+            entry.misspelling.flatMap { $0.isEmpty ? nil : ReplacementEngine.Rule(wrong: $0, right: entry.term, isSnippet: entry.isSnippet == true) }
         }
     }
 
     // MARK: - CSV (data portability)
 
     public func exportCSV() -> String {
-        var lines = ["term,misspelling"]
+        var lines = ["term,misspelling,isSnippet"]
         for entry in entries() {
             let term = entry.term.replacingOccurrences(of: "\"", with: "\"\"")
             let misspelling = (entry.misspelling ?? "").replacingOccurrences(of: "\"", with: "\"\"")
-            lines.append("\"\(term)\",\"\(misspelling)\"")
+            let isSnippet = entry.isSnippet == true ? "true" : "false"
+            lines.append("\"\(term)\",\"\(misspelling)\",\"\(isSnippet)\"")
         }
         return lines.joined(separator: "\n")
     }
@@ -195,10 +215,20 @@ public struct DictionaryStore: Sendable {
             let columns = parseCSVLine(line)
             guard let rawTerm = columns.first else { continue }
             let term = rawTerm.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard (1...60).contains(term.count), !seen.contains(term.lowercased()) else { continue }
+            
             let misspelling = columns.count > 1 && !columns[1].isEmpty ? columns[1] : nil
-            current.append(DictionaryEntry(term: term, misspelling: misspelling))
-            seen.insert(term.lowercased())
+            let isSnippet = columns.count > 2 && columns[2].lowercased() == "true"
+            
+            if !isSnippet {
+                guard (1...60).contains(term.count), !seen.contains(term.lowercased()) else { continue }
+                seen.insert(term.lowercased())
+            } else {
+                guard !term.isEmpty else { continue }
+                let trigger = misspelling?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() ?? ""
+                guard !trigger.isEmpty, !current.contains(where: { ($0.misspelling?.lowercased() ?? "") == trigger && ($0.isSnippet == true) }) else { continue }
+            }
+            
+            current.append(DictionaryEntry(term: term, misspelling: misspelling, isSnippet: isSnippet ? true : nil))
             imported += 1
         }
         if imported > 0 {

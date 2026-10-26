@@ -73,6 +73,16 @@ struct HistoryPane: View {
                 stat(value: "\(stats.totalDictations)", label: "dictations")
                 stat(value: stats.averageWPM > 0 ? "\(stats.averageWPM)" : "—", label: "avg WPM")
                 Spacer()
+                
+                Button(action: exportHistory) {
+                    Label("Export History…", systemImage: "square.and.arrow.up")
+                }
+                .buttonStyle(.plain)
+                .font(JotUI.TypeScale.labelSmall(grad: grad))
+                .foregroundStyle(.secondary)
+                .help("Copy all visible dictations to clipboard as Markdown")
+                .accessibilityLabel("Export history to clipboard as Markdown")
+                
                 HStack(spacing: 3) {
                     ForEach(0..<4, id: \.self) { index in
                         Capsule().fill(JotUI.Colors.brandQuad[index])
@@ -374,6 +384,19 @@ struct HistoryPane: View {
 
     // MARK: - Actions
 
+    private func exportHistory() {
+        var markdown = ""
+        for record in records {
+            let time = record.startedAt.formatted(date: .omitted, time: .shortened)
+            let app = record.targetAppName ?? "Unknown App"
+            let transcript = record.displayText
+            markdown += "### [\(time)] - [\(app)]\n\n\(transcript)\n\n"
+        }
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(markdown, forType: .string)
+    }
+
     private func copy(_ record: DictationRecord) {
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
@@ -398,6 +421,9 @@ private struct RecordDetailSheet: View {
     @Environment(\.colorScheme) private var scheme
     @State private var showRaw = false
     @State private var player: AVAudioPlayer?
+    @State private var playbackRate: Float = 1.0
+    @State private var currentTime: TimeInterval = 0
+    private let timer = Timer.publish(every: 0.1, on: .main, in: .common).autoconnect()
     private var grad: CGFloat { scheme == .dark ? 25 : 0 }
 
     var body: some View {
@@ -482,6 +508,11 @@ private struct RecordDetailSheet: View {
         .padding(JotUI.Spacing.l)
         .frame(width: 520)
         .onDisappear { player?.stop() }
+        .onReceive(timer) { _ in
+            if let p = player, p.isPlaying {
+                currentTime = p.currentTime
+            }
+        }
     }
 
     private var hasDistinctRaw: Bool {
@@ -498,23 +529,56 @@ private struct RecordDetailSheet: View {
     private var audioButton: some View {
         let cafURL = FileLayout.audioCAF(in: record.folderURL)
         if FileManager.default.fileExists(atPath: cafURL.path) {
-            Button {
-                if player?.isPlaying == true {
-                    player?.stop()
-                    player = nil
-                } else {
-                    player = try? AVAudioPlayer(contentsOf: cafURL)
-                    player?.play()
+            HStack(spacing: JotUI.Spacing.m) {
+                Button {
+                    if player?.isPlaying == true {
+                        player?.stop()
+                        player = nil
+                    } else {
+                        if player == nil {
+                            player = try? AVAudioPlayer(contentsOf: cafURL)
+                            player?.enableRate = true
+                        }
+                        player?.rate = playbackRate
+                        player?.play()
+                    }
+                } label: {
+                    Label(player?.isPlaying == true ? "Stop" : "Play Audio",
+                          systemImage: player?.isPlaying == true ? "stop.fill" : "play.fill")
                 }
-            } label: {
-                Label(player?.isPlaying == true ? "Stop" : "Play Audio",
-                      systemImage: player?.isPlaying == true ? "stop.fill" : "play.fill")
+                
+                if player != nil {
+                    Picker("", selection: $playbackRate) {
+                        Text("1x").tag(Float(1.0))
+                        Text("1.25x").tag(Float(1.25))
+                        Text("1.5x").tag(Float(1.5))
+                        Text("2x").tag(Float(2.0))
+                    }
+                    .pickerStyle(.segmented)
+                    .frame(width: 140)
+                    .onChange(of: playbackRate) { _, newRate in
+                        player?.rate = newRate
+                    }
+                    
+                    if let duration = player?.duration {
+                        Text("\(formatTime(currentTime)) / \(formatTime(duration))")
+                            .font(JotUI.TypeScale.labelSmall(grad: grad))
+                            .foregroundStyle(.secondary)
+                            .monospacedDigit()
+                    }
+                }
             }
         } else {
             Text("Audio removed by retention policy")
                 .font(JotUI.TypeScale.labelSmall(grad: grad))
                 .foregroundStyle(.secondary)
         }
+    }
+    
+    private func formatTime(_ interval: TimeInterval) -> String {
+        let minutes = Int(interval) / 60
+        let seconds = Int(interval) % 60
+        return String(format: "%d:%02d", minutes, seconds)
     }
 
     private func metaLabel(_ text: String) -> some View {

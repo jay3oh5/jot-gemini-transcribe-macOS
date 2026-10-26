@@ -80,6 +80,7 @@ final class HistoryStoreTests: XCTestCase {
         try FileManager.default.createDirectory(at: folder1, withIntermediateDirectories: true)
         store.upsert(meta: meta1, folder: folder1)
         
+        // Let's directly edit it in DB to simulate standard behavior first
         try store.queue.write { db in
             try db.execute(sql: "UPDATE dictation SET cleanedTranscript = ?, durationSeconds = ? WHERE id = ?", arguments: ["cleaned one", 2.0, meta1.id.uuidString])
         }

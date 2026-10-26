@@ -9,7 +9,7 @@ on:
 jobs:
   build:
     name: Build & Package App
-    runs-on: macos-14
+    runs-on: macos-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -22,28 +22,35 @@ jobs:
 
       - name: Build Jot.app
         run: |
-          set -o pipefail
-          GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=safe.bareRepository GIT_CONFIG_VALUE_0=all \
           xcodebuild build \
             -project Jot.xcodeproj \
             -scheme Jot \
             -configuration Debug \
-            -destination 'platform=macOS,arch=arm64' \
-            -derivedDataPath build/DerivedData 2>&1 | tee xcodebuild.log || {
-              echo "### Build Failed" >> $GITHUB_STEP_SUMMARY
-              echo '```text' >> $GITHUB_STEP_SUMMARY
-              tail -n 80 xcodebuild.log >> $GITHUB_STEP_SUMMARY
-              echo '```' >> $GITHUB_STEP_SUMMARY
-              exit 1
-            }
+            -destination 'platform=macOS' \
+            CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO DEVELOPMENT_TEAM= \
+            2>&1 | tee xcodebuild.log
 
       - name: Package App into ZIP
         run: |
-          cd build/DerivedData/Build/Products/Debug
-          zip -r -y Jot-macOS.zip Jot.app
+          APP_PATH=$(find ~/Library/Developer/Xcode/DerivedData -name "Jot.app" -type d | head -n 1)
+          if [ -z "$APP_PATH" ]; then
+            echo "Jot.app not found in DerivedData"
+            exit 1
+          fi
+          echo "Found app at: $APP_PATH"
+          mkdir -p build/dist
+          cd "$(dirname "$APP_PATH")"
+          zip -r -y "$GITHUB_WORKSPACE/build/dist/Jot-macOS.zip" Jot.app
 
       - name: Upload Downloadable Artifact
         uses: actions/upload-artifact@v4
         with:
           name: Jot-macOS-Debug
-          path: build/DerivedData/Build/Products/Debug/Jot-macOS.zip
+          path: build/dist/Jot-macOS.zip
+
+      - name: Upload Build Log on Failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcodebuild-log
+          path: xcodebuild.log

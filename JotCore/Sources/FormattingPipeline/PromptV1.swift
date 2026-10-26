@@ -108,6 +108,7 @@ public enum PromptV1 {
     - Apply self-corrections: "at 2, actually 3" keeps only "at 3"; "scratch that" drops the previous phrase. A correction replaces ONLY the corrected words — keep everything else.
     - Convert spoken punctuation when clearly commands: "period" → ".", "comma" → ",", "new line" → line break, "new paragraph" → blank line.
     - Use digits for numbers, times, and dates. Keep emails and URLs in written form.
+    - Preserve the exact language spoken. Never translate speech into another language unless explicitly requested.
     """
 
     static let examples = """

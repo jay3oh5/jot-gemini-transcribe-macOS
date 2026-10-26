@@ -49,6 +49,7 @@ public final class AudioCaptureEngine: AudioCapturing {
     /// words are lost, so it must never happen on the critical path.
     private var prewarmedDevice: AudioDeviceID?
     private var isPrewarmed = false
+    private var hasTap = false
     /// Parked while stop() waits for the HAL's in-flight buffer to land.
     private var tailWaiter: CheckedContinuation<Void, Never>?
     private var writer: CAFWriter?
@@ -243,6 +244,17 @@ public final class AudioCaptureEngine: AudioCapturing {
         waiter?.resume()
     }
 
+    deinit {
+        tearDownEngine()
+    }
+
+    /// Tears down the capture graph immediately without waiting for tail audio.
+    /// Used to cleanly discard prewarmed or cancelled capture graphs.
+    public func cancel() {
+        tearDownEngine()
+        withStateLock { stopped = true; pcmSink = nil }
+    }
+
     // MARK: - Engine plumbing
 
     private func buildAndStartEngine(reason: String) throws {
@@ -277,6 +289,7 @@ public final class AudioCaptureEngine: AudioCapturing {
         input.installTap(onBus: 0, bufferSize: 1024, format: hwFormat) { [weak self] buffer, _ in
             self?.ingest(buffer, hwRate: hwFormat.sampleRate)
         }
+        hasTap = true
 
         engine.prepare()
         guard shouldStart else {
@@ -310,9 +323,19 @@ public final class AudioCaptureEngine: AudioCapturing {
     private func tearDownEngine() {
         // A stop() parked on the tail must never outlive the engine.
         resumeTailWaiter()
+        if let configObserver {
+            NotificationCenter.default.removeObserver(configObserver)
+            self.configObserver = nil
+        }
         if let engine {
-            engine.inputNode.removeTap(onBus: 0)
-            engine.stop()
+            if hasTap {
+                engine.inputNode.removeTap(onBus: 0)
+                hasTap = false
+            }
+            if engine.isRunning {
+                engine.stop()
+            }
+            engine.reset()
         }
         engine = nil
         converter = nil

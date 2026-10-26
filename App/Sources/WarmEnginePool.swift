@@ -64,7 +64,13 @@ final class WarmEnginePool {
     /// Drop the spare (e.g. the input device changed under it) and build a fresh
     /// one for the new route.
     func refresh() {
+        let oldSpare = spare
         spare = nil
+        oldSpare?.cancel()
         prewarmNext()
+    }
+
+    deinit {
+        spare?.cancel()
     }
 }

@@ -85,9 +85,15 @@ public protocol AudioCapturing: AnyObject {
     /// Stops and finalizes the file, first draining the HAL's in-flight buffer
     /// so the tail of the last word is not discarded. Safe to call once.
     func stop() async -> AudioCaptureResult
+    /// Tears down the capture graph immediately without waiting for tail audio.
+    /// Used to cleanly discard prewarmed or cancelled capture graphs.
+    func cancel()
 }
 
 extension AudioCapturing {
+    /// Default no-op implementation of cancel for test doubles.
+    public func cancel() {}
+
     /// For the callers that only ever want a file — onboarding's mic check and
     /// every non-live dictation. Implementers still have to handle the sink.
     public func start(writingTo url: URL) throws {

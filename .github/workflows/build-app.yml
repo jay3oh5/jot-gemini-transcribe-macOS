@@ -22,13 +22,20 @@ jobs:
 
       - name: Build Jot.app
         run: |
+          set -o pipefail
           GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=safe.bareRepository GIT_CONFIG_VALUE_0=all \
           xcodebuild build \
             -project Jot.xcodeproj \
             -scheme Jot \
             -configuration Debug \
             -destination 'platform=macOS,arch=arm64' \
-            -derivedDataPath build/DerivedData
+            -derivedDataPath build/DerivedData 2>&1 | tee xcodebuild.log || {
+              echo "### Build Failed" >> $GITHUB_STEP_SUMMARY
+              echo '```text' >> $GITHUB_STEP_SUMMARY
+              tail -n 80 xcodebuild.log >> $GITHUB_STEP_SUMMARY
+              echo '```' >> $GITHUB_STEP_SUMMARY
+              exit 1
+            }
 
       - name: Package App into ZIP
         run: |

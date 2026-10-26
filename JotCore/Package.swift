@@ -23,7 +23,7 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/groue/GRDB.swift.git", from: "7.0.0"),
-        .package(url: "https://github.com/Clipy/Sauce.git", from: "2.2.0"),
+        .package(url: "https://github.com/Clipy/Sauce.git", exact: "2.4.1"),
         .package(url: "https://github.com/sindresorhus/KeyboardShortcuts.git", from: "2.0.0"),
     ],
     targets: [

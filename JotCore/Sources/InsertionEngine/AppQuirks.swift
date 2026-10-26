@@ -26,6 +26,10 @@ public enum AppQuirks {
         "com.mitchellh.ghostty",
         "net.kovidgoyal.kitty",
         "io.alacritty",
+        "dev.zed.Zed",
+        "com.sublimetext.4",
+        "com.jetbrains.intellij",
+        "org.vim.MacVim",
     ]
 
     /// Chromium/Electron apps: the accessibility tree must be woken with

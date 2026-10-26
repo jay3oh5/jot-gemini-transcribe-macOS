@@ -70,4 +70,36 @@ final class HistoryStoreTests: XCTestCase {
         store.reindex(recordingsRoot: recordings)
         XCTAssertEqual(store.allIDsForTesting(), [kept.id.uuidString])
     }
+
+    func testStatsCountsRawTranscriptWhenCleanedIsMissing() throws {
+        // First record with cleaned transcript
+        var meta1 = SessionMeta(id: UUID(), startedAt: Date(), status: .inserted)
+        meta1.rawTranscript = "raw one"
+        
+        let folder1 = root.appendingPathComponent("recordings", isDirectory: true).appendingPathComponent(meta1.id.uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: folder1, withIntermediateDirectories: true)
+        store.upsert(meta: meta1, folder: folder1)
+        
+        try store.queue.write { db in
+            try db.execute(sql: "UPDATE dictation SET cleanedTranscript = ?, durationSeconds = ? WHERE id = ?", arguments: ["cleaned one", 2.0, meta1.id.uuidString])
+        }
+        
+        // Second record with ONLY raw transcript
+        var meta2 = SessionMeta(id: UUID(), startedAt: Date(), status: .inserted)
+        meta2.rawTranscript = "this is raw"
+        
+        let folder2 = root.appendingPathComponent("recordings", isDirectory: true).appendingPathComponent(meta2.id.uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: folder2, withIntermediateDirectories: true)
+        store.upsert(meta: meta2, folder: folder2)
+        
+        try store.queue.write { db in
+            try db.execute(sql: "UPDATE dictation SET durationSeconds = ? WHERE id = ?", arguments: [3.0, meta2.id.uuidString])
+        }
+
+        let stats = store.stats()
+        
+        // Word counts: "cleaned one" (2 words) + "this is raw" (3 words) = 5 words
+        XCTAssertEqual(stats.totalDictations, 2)
+        XCTAssertEqual(stats.totalWords, 5)
+    }
 }

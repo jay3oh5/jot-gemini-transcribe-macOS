@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.2] - 2026-10-26
+
+### Fixed
+- **Audio Device Route Change SIGSEGV Crash:** Eliminated use-after-free crash in `AVAudioIOUnit::IOUnitPropertyListener`:
+  - Retain discarded `AVAudioEngine` instances in an `AudioEngineRetirement` grace-period pool for 5 seconds during teardown, allowing in-flight CoreAudio / AVFAudio property listener dispatch blocks to drain safely on background queues without referencing deallocated memory.
+  - Debounced warm capture graph rebuilds in `WarmEnginePool` by 500ms and added task cancellation for in-flight prewarm operations, preventing race conditions and route-switch thrashing during USB/Bluetooth connect/disconnect events.
+- **Package Dependency Clean-Up:** Removed unused `KeyboardShortcuts` dependency from `JotCore/Package.swift`, resolving CLI build errors under Swift 6.
+- **History Word Count Stats:** Fixed `HistoryStore.stats()` to include dictations where only `rawTranscript` exists.
+- **Language Preservation in Dictation:** Updated Gemini system prompt in `PromptV1` to preserve the exact spoken language and prevent accidental translations.
+- **Terminal & Editor Insertion Quirks:** Added `dev.zed.Zed`, `com.sublimetext.4`, `com.jetbrains.intellij`, and `org.vim.MacVim` to paste-mode insertion apps.
+- **Audio Sample Ingestion Performance:** Optimized `NoiseFloorEstimator` to use an $O(1)$ ring buffer instead of $O(N)$ `removeFirst()` array shifting.
+
 ## [0.4.1] - 2026-10-26
 
 ### Added

@@ -336,6 +336,13 @@ public final class AudioCaptureEngine: AudioCapturing {
                 engine.stop()
             }
             engine.reset()
+            // Defend against use-after-free in CoreAudio's asynchronous property listener:
+            // When an audio device changes or disconnects, CoreAudio dispatches listener
+            // blocks (e.g. AVAudioIOUnit::IOUnitPropertyListener) to background queues.
+            // If AVAudioEngine is deallocated immediately while these blocks are queued,
+            // objc_msgSend crashes with EXC_BAD_ACCESS. Retain the retired engine for
+            // several seconds so all in-flight CoreAudio blocks drain safely.
+            AudioEngineRetirement.retire(engine)
         }
         engine = nil
         converter = nil
@@ -617,4 +624,31 @@ enum AudioDeviceQuery {
     // NOTE: device *pinning* (kAudioOutputUnitProperty_CurrentDevice or
     // AUAudioUnit.setDeviceID on the input node) was probed on macOS 26 and leaves
     // the engine running with a silent tap — do not reintroduce it on AVAudioEngine.
+}
+
+/// Retains discarded `AVAudioEngine` instances for a short grace period before
+/// releasing them.
+///
+/// Hardware route switches and device disconnections trigger asynchronous property
+/// listener blocks inside Apple's AVFAudio framework (specifically
+/// `AVAudioIOUnit::IOUnitPropertyListener`) dispatched via libdispatch. If the
+/// engine is deallocated synchronously while such a block is queued or in flight,
+/// CoreAudio's internal callback invokes `objc_msgSend` on the deallocated audio
+/// unit, causing an immediate `EXC_BAD_ACCESS` (SIGSEGV) crash. Keeping retired
+/// engines alive for a brief window allows all pending HAL callbacks to drain safely.
+private enum AudioEngineRetirement {
+    private static let lock = NSLock()
+    private static var graveyard: [AVAudioEngine] = []
+
+    static func retire(_ engine: AVAudioEngine) {
+        lock.lock()
+        graveyard.append(engine)
+        lock.unlock()
+
+        DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + 5.0) {
+            lock.lock()
+            graveyard.removeAll { $0 === engine }
+            lock.unlock()
+        }
+    }
 }

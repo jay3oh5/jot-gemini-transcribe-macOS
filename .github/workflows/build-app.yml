@@ -8,7 +8,7 @@ on:
 
 jobs:
   build:
-    name: Build & Package App
+    name: Build Universal macOS App (Intel + Apple Silicon)
     runs-on: macos-latest
     steps:
       - name: Checkout Code
@@ -20,17 +20,19 @@ jobs:
       - name: Generate Xcode Project
         run: xcodegen generate
 
-      - name: Build Jot.app
+      - name: Build Universal Jot.app
         run: |
           xcodebuild build \
             -project Jot.xcodeproj \
             -scheme Jot \
             -configuration Debug \
-            -destination 'platform=macOS' \
+            -destination 'generic/platform=macOS' \
+            ARCHS="x86_64 arm64" \
+            ONLY_ACTIVE_ARCH=NO \
             CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO DEVELOPMENT_TEAM= \
             2>&1 | tee xcodebuild.log
 
-      - name: Package App into ZIP
+      - name: Verify Architectures and Package
         run: |
           APP_PATH=$(find ~/Library/Developer/Xcode/DerivedData -name "Jot.app" -type d | head -n 1)
           if [ -z "$APP_PATH" ]; then
@@ -38,15 +40,17 @@ jobs:
             exit 1
           fi
           echo "Found app at: $APP_PATH"
+          echo "Verifying binary architectures:"
+          file "$APP_PATH/Contents/MacOS/Jot"
           mkdir -p build/dist
           cd "$(dirname "$APP_PATH")"
-          zip -r -y "$GITHUB_WORKSPACE/build/dist/Jot-macOS.zip" Jot.app
+          zip -r -y "$GITHUB_WORKSPACE/build/dist/Jot-Universal.zip" Jot.app
 
       - name: Upload Downloadable Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Jot-macOS-Debug
-          path: build/dist/Jot-macOS.zip
+          name: Jot-Universal-Debug
+          path: build/dist/Jot-Universal.zip
 
       - name: Upload Build Log on Failure
         if: always()

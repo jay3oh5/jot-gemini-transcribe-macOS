@@ -1,0 +1,42 @@
+name: Build macOS App
+
+on:
+  push:
+    branches:
+      - '**'
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build & Package App
+    runs-on: macos-14
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install xcodegen
+        run: brew install xcodegen
+
+      - name: Generate Xcode Project
+        run: xcodegen generate
+
+      - name: Build Jot.app (Ad-hoc signed)
+        run: |
+          xcodebuild build \
+            -project Jot.xcodeproj \
+            -scheme Jot \
+            -configuration Debug \
+            -destination 'platform=macOS' \
+            -derivedDataPath build/DerivedData \
+            CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO DEVELOPMENT_TEAM=
+
+      - name: Package App into ZIP
+        run: |
+          cd build/DerivedData/Build/Products/Debug
+          zip -r -y Jot-macOS.zip Jot.app
+
+      - name: Upload Downloadable Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Jot-macOS-Debug
+          path: build/DerivedData/Build/Products/Debug/Jot-macOS.zip

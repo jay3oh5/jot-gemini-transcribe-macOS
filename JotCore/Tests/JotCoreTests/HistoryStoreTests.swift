@@ -75,27 +75,21 @@ final class HistoryStoreTests: XCTestCase {
         // First record with cleaned transcript
         var meta1 = SessionMeta(id: UUID(), startedAt: Date(), status: .inserted)
         meta1.rawTranscript = "raw one"
+        meta1.cleanedTranscript = "cleaned one"
+        meta1.audioDurationSeconds = 2.0
         
         let folder1 = root.appendingPathComponent("recordings", isDirectory: true).appendingPathComponent(meta1.id.uuidString, isDirectory: true)
         try FileManager.default.createDirectory(at: folder1, withIntermediateDirectories: true)
         store.upsert(meta: meta1, folder: folder1)
         
-        // Let's directly edit it in DB to simulate standard behavior first
-        try store.queue.write { db in
-            try db.execute(sql: "UPDATE dictation SET cleanedTranscript = ?, durationSeconds = ? WHERE id = ?", arguments: ["cleaned one", 2.0, meta1.id.uuidString])
-        }
-        
         // Second record with ONLY raw transcript
         var meta2 = SessionMeta(id: UUID(), startedAt: Date(), status: .inserted)
         meta2.rawTranscript = "this is raw"
+        meta2.audioDurationSeconds = 3.0
         
         let folder2 = root.appendingPathComponent("recordings", isDirectory: true).appendingPathComponent(meta2.id.uuidString, isDirectory: true)
         try FileManager.default.createDirectory(at: folder2, withIntermediateDirectories: true)
         store.upsert(meta: meta2, folder: folder2)
-        
-        try store.queue.write { db in
-            try db.execute(sql: "UPDATE dictation SET durationSeconds = ? WHERE id = ?", arguments: [3.0, meta2.id.uuidString])
-        }
 
         let stats = store.stats()
         

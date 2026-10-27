@@ -64,7 +64,7 @@ public extension Notification.Name {
 }
 
 public final class HistoryStore: @unchecked Sendable {
-    private let queue: DatabaseQueue
+    let queue: DatabaseQueue
 
     private static func notifyChanged() {
         NotificationCenter.default.post(name: .gtHistoryDidChange, object: nil)

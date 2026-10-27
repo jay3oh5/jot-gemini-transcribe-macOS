@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-10-27
+
+### Added
+- **Voice Snippets & Text Expander in Dictionary:**
+  - Create and manage custom voice-activated text snippets in the Dictionary pane with dedicated segmented switching between Words and Snippets.
+  - Spoken trigger phrases automatically expand into full multi-line snippets, templates, or URLs upon insertion.
+  - Full CSV import and export support for snippets with deduplication and validation.
+- **History Export to Markdown:**
+  - One-click "Export History" button to copy all session records directly to the system clipboard formatted as clean Markdown.
+- **Audio Scrubber & Variable Playback Speed:**
+  - In-window audio playback controls in the History detail sheet featuring variable speeds (1x, 1.25x, 1.5x, 2x) and a timestamp scrubber.
+- **Microphone Selector in Settings:**
+  - Added dedicated microphone input dropdown in Settings > Dictation with empty state handling.
+
+### Fixed & Improved
+- **High-Frequency Buffer Allocation Optimization:**
+  - Introduced `BufferPool` in `AudioCaptureEngine` to eliminate dynamic heap allocations during audio stream ingestion.
+  - Dynamically scaled pool capacity for high sample rate audio devices (96kHz / 192kHz) and added bounds checking to prevent buffer overflows and CoreAudio exceptions.
+- **Smart Punctuation & Smart Quote Normalization:**
+  - Enhanced `ReplacementEngine` to support bidirectional matching for opening curly single quotes (`‘`), closing curly single quotes (`’`), straight single quotes (`'`), and smart double quotes (`“` and `”`).
+  - Added smart quote artifact stripping in `ValidationGate`.
+- **Dictionary CSV Import Fixes:**
+  - Fixed an issue where snippet expansions with matching terms blocked vocabulary word imports.
+  - Added $O(1)$ duplicate trigger rejection for CSV batch processing.
+- **Accessibility & Micro-Animations:**
+  - Added accessible VoiceOver labels, hints, and traits to icon-only controls, idle dot indicators, and HUD elements.
+  - Silenced duplicate chime earcon upon successful text insertion while preserving the visual checkmark.
+- **Test Suite & CI Pipeline:**
+  - Added unit and regression test suites for `DictionaryStore`, `ReplacementEngine`, and `ValidationGate`.
+  - Fixed internal database access level in `HistoryStore` for unit test execution under CI.
+
 ## [0.4.2] - 2026-10-26
 
 ### Fixed

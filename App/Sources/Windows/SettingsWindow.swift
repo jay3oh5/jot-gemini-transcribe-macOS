@@ -14,6 +14,7 @@
 
 import AppKit
 import Combine
+import CoreAudio
 import ServiceManagement
 import SwiftUI
 import JotCore

@@ -134,7 +134,7 @@ private struct MainView: View {
 
     private var sidebar: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text("Jot")
+            Text("Sayo")
                 .font(JotUI.TypeScale.title())
                 .padding(.horizontal, 14)
                 .padding(.top, 20)
@@ -254,7 +254,7 @@ struct GeneralPane: View {
             }
 
             Section {
-                Toggle("Start Jot at login", isOn: $launchAtLogin)
+                Toggle("Start Sayo at login", isOn: $launchAtLogin)
                     .onChange(of: launchAtLogin) { _, enabled in
                         // The failure-path revert below re-enters onChange with the
                         // inverted value — this guard stops the bounce from calling
@@ -343,9 +343,9 @@ struct DictationPane: View {
                 }
             } footer: {
                 if preferredInputUID == nil {
-                    Text("Jot records using whichever microphone your Mac is currently set to.")
+                    Text("Sayo records using whichever microphone your Mac is currently set to.")
                 } else {
-                    Text("Jot will always switch to this microphone when dictating.")
+                    Text("Sayo will always switch to this microphone when dictating.")
                 }
             }
             
@@ -606,7 +606,7 @@ struct AdvancedPane: View {
                         settings.setLegacyTranscribeEndpoint(enabled)
                     }
             } footer: {
-                Text("Jot transcribes through Gemini's newer interactions endpoint, which is what makes Smart transcription possible. If it starts misbehaving, this switches back to the older one — transcription still works, but it will be word-for-word and Smart transcription will have no effect.")
+                Text("Sayo transcribes through Gemini's newer interactions endpoint, which is what makes Smart transcription possible. If it starts misbehaving, this switches back to the older one — transcription still works, but it will be word-for-word and Smart transcription will have no effect.")
             }
         }
         // Key saved elsewhere (onboarding, dev-file migration) while this pane is
@@ -685,8 +685,8 @@ struct AboutPane: View {
     /// Read from the bundle directly: NSApp.applicationIconImage is set at
     /// launch but the standard About panel ignores it for an LSUIElement app,
     /// which is exactly why this pane exists.
-    static let appIcon: NSImage? = Bundle.main
-        .url(forResource: "Jot", withExtension: "icns")
+    static let appIcon: NSImage? = (Bundle.main.url(forResource: "Sayo", withExtension: "icns")
+        ?? Bundle.main.url(forResource: "Jot", withExtension: "icns"))
         .flatMap(NSImage.init(contentsOf:))
 
     private var version: String {
@@ -704,28 +704,38 @@ struct AboutPane: View {
                     .accessibilityHidden(true)
             }
             VStack(spacing: 4) {
-                Text("Jot")
+                Text("Sayo")
                     .font(JotUI.TypeScale.display())
                     .foregroundStyle(JotUI.Colors.onSurface)
                 Text(version)
                     .font(JotUI.TypeScale.body())
                     .foregroundStyle(JotUI.Colors.onSurfaceVariant)
             }
-            HStack(spacing: 4) {
-                Text("Created by")
-                    .foregroundStyle(JotUI.Colors.onSurfaceVariant)
-                Link("Ammaar Reshi", destination: JotLinks.author)
+            VStack(spacing: 4) {
+                HStack(spacing: 4) {
+                    Text("Maintained by")
+                        .foregroundStyle(JotUI.Colors.onSurfaceVariant)
+                    Link("Jay", destination: SayoLinks.author)
+                }
+                .font(JotUI.TypeScale.body())
+
+                HStack(spacing: 4) {
+                    Text("Forked from Jot by")
+                        .foregroundStyle(JotUI.Colors.onSurfaceVariant)
+                    Link("Ammaar Reshi", destination: SayoLinks.originalAuthor)
+                }
+                .font(JotUI.TypeScale.labelSmall())
             }
-            .font(JotUI.TypeScale.body())
 
             HStack(spacing: JotUI.Spacing.m) {
-                Link("Source", destination: JotLinks.repository)
-                Link("Privacy", destination: JotLinks.privacy)
-                Link("Report a bug", destination: JotLinks.issues)
+                Link("Source", destination: SayoLinks.repository)
+                Link("Original Project", destination: SayoLinks.originalRepository)
+                Link("Privacy", destination: SayoLinks.privacy)
+                Link("Report a bug", destination: SayoLinks.issues)
             }
             .font(JotUI.TypeScale.body())
 
-            Text("Open source under the Apache License 2.0.\nThis is not an officially supported Google product.")
+            Text("Open source under the Apache License 2.0.\nThis is a community-maintained fork and not an officially supported Google product.")
                 .font(JotUI.TypeScale.labelSmall())
                 .foregroundStyle(JotUI.Colors.onSurfaceVariant)
                 .multilineTextAlignment(.center)

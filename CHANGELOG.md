@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2026-10-27
+
+### Changed
+- **Rebranded to Sayo:**
+  - Transitioned project identity to **Sayo**, establishing an independent, clean-slate fork of Google's experimental Jot demo.
+  - Updated primary URL scheme to `sayo://` while preserving `jot://` as an alias for backwards compatibility with existing automations.
+  - Configured application bundle identifier as `com.jay3oh5.sayo`.
+  - Refreshed Settings, About, and Onboarding interfaces with maintainer attribution to Jay (`jay3oh5`) while maintaining full attribution and links to original Jot author Ammaar Reshi and upstream Google repository.
+  - Updated build configurations, CI/CD pipelines, DMG packaging art, and documentation for Sayo.
+
 ## [0.5.0] - 2026-10-27
 
 ### Added

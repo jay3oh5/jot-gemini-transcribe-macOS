@@ -13,21 +13,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Packages a built Jot.app into a drag-to-install DMG with custom art.
+# Packages a built Sayo.app into a drag-to-install DMG with custom art.
 #
-#   scripts/make-dmg.sh <path-to-Jot.app> [output.dmg]
+#   scripts/make-dmg.sh <path-to-Sayo.app> [output.dmg]
 #
 # Layout is set through Finder (AppleScript), which is how every Mac installer
 # DMG is made. The first run may ask for permission to control Finder.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-APP_PATH="${1:?usage: make-dmg.sh <Jot.app> [output.dmg]}"
+APP_PATH="${1:?usage: make-dmg.sh <Sayo.app> [output.dmg]}"
 VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$APP_PATH/Contents/Info.plist")
-OUT_DMG="${2:-build/Jot-$VERSION.dmg}"
-VOLUME_NAME="Jot"
+OUT_DMG="${2:-build/Sayo-$VERSION.dmg}"
+VOLUME_NAME="Sayo"
 STAGING="build/dmg-staging"
-RW_DMG="build/jot-rw.dmg"
+RW_DMG="build/sayo-rw.dmg"
 
 # Icon coordinates MUST match scripts/make-dmg-background.swift — but Finder's
 # origin is TOP-left while the art is drawn bottom-left, so Y is flipped here.
@@ -86,7 +86,7 @@ tell application "Finder"
     set icon size of viewOptions to 96
     set text size of viewOptions to 12
     set background picture of viewOptions to file ".background:background.tiff"
-    set position of item "Jot.app" of theWindow to {$APP_X, $APP_Y}
+    set position of item "$(basename "$APP_PATH")" of theWindow to {$APP_X, $APP_Y}
     set position of item "Applications" of theWindow to {$LINK_X, $LINK_Y}
     -- Anything not part of the pitch goes off-canvas (only reachable when the
     -- user has "show hidden files" on, but then it would sit on the artwork).

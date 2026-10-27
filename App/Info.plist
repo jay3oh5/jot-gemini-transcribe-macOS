@@ -5,11 +5,11 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Jot</string>
+	<string>Sayo</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIconFile</key>
-	<string>Jot</string>
+	<string>Sayo</string>
 	<key>CFBundleIdentifier</key>
 	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 	<key>CFBundleInfoDictionaryVersion</key>
@@ -24,9 +24,10 @@
 	<array>
 		<dict>
 			<key>CFBundleURLName</key>
-			<string>com.ammaar.jot.url</string>
+			<string>com.jay3oh5.sayo.url</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
+				<string>sayo</string>
 				<string>jot</string>
 			</array>
 		</dict>
@@ -40,8 +41,8 @@
 	<key>LSUIElement</key>
 	<true/>
 	<key>NSHumanReadableCopyright</key>
-	<string>Copyright 2026 Google LLC. Apache License 2.0. This is not an officially supported Google product.</string>
+	<string>Copyright 2026 Jay (Fork Maintainer) and Google LLC (Original Jot Authors). Apache License 2.0. This is not an officially supported Google product.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Jot records audio while you hold the dictation key, so it can transcribe what you say.</string>
+	<string>Sayo records audio while you hold the dictation key, so it can transcribe what you say.</string>
 </dict>
 </plist>

@@ -16,9 +16,13 @@ import Foundation
 
 /// Every outbound link in one place, so the About panel, the Settings pane and
 /// the docs can never drift apart.
-enum JotLinks {
-    static let author = URL(string: "https://x.com/ammaar")!
-    static let repository = URL(string: "https://github.com/google-gemini/jot-gemini-transcribe-macOS")!
-    static let issues = URL(string: "https://github.com/google-gemini/jot-gemini-transcribe-macOS/issues")!
-    static let privacy = URL(string: "https://github.com/google-gemini/jot-gemini-transcribe-macOS/blob/main/docs/PRIVACY.md")!
+enum SayoLinks {
+    static let author = URL(string: "https://github.com/jay3oh5")!
+    static let repository = URL(string: "https://github.com/jay3oh5/jot-gemini-transcribe-macOS")!
+    static let originalAuthor = URL(string: "https://x.com/ammaar")!
+    static let originalRepository = URL(string: "https://github.com/google-gemini/jot-gemini-transcribe-macOS")!
+    static let issues = URL(string: "https://github.com/jay3oh5/jot-gemini-transcribe-macOS/issues")!
+    static let privacy = URL(string: "https://github.com/jay3oh5/jot-gemini-transcribe-macOS/blob/main/docs/PRIVACY.md")!
 }
+
+typealias JotLinks = SayoLinks

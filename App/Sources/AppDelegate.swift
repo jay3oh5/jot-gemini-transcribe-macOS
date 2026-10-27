@@ -22,11 +22,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationWillFinishLaunching(_ notification: Notification) {
         // Single instance, always: two copies means two event taps, two pills,
         // and a race over the History DB. The newer instance defers.
-        let bundleID = Bundle.main.bundleIdentifier ?? "com.ammaar.jot"
+        let bundleID = Bundle.main.bundleIdentifier ?? "com.jay3oh5.sayo"
         let others = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID)
             .filter { $0.processIdentifier != ProcessInfo.processInfo.processIdentifier }
         if !others.isEmpty {
-            Log.session.warning("another Jot instance is already running — quitting this one")
+            Log.session.warning("another Sayo instance is already running — quitting this one")
             NSApp.terminate(nil)
             return
         }
@@ -47,12 +47,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // An accessory app does not reliably adopt CFBundleIconFile for the
         // standard About panel — it showed the generic placeholder. Load it
         // from the bundle explicitly.
-        if let iconURL = Bundle.main.url(forResource: "Jot", withExtension: "icns"),
+        if let iconURL = Bundle.main.url(forResource: "Sayo", withExtension: "icns") ?? Bundle.main.url(forResource: "Jot", withExtension: "icns"),
            let icon = NSImage(contentsOf: iconURL) {
             NSApp.applicationIconImage = icon
             Log.ui.info("app icon set from \(iconURL.lastPathComponent, privacy: .public) size \(icon.size.width, format: .fixed(precision: 0))")
         } else {
-            Log.ui.error("app icon NOT set — url: \(Bundle.main.url(forResource: "Jot", withExtension: "icns")?.path ?? "nil", privacy: .public)")
+            Log.ui.error("app icon NOT set — url: \(Bundle.main.url(forResource: "Sayo", withExtension: "icns")?.path ?? "nil", privacy: .public)")
         }
         FontLoader.registerBundledFonts()
         let controller = DictationController()
@@ -74,7 +74,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Replay any jot:// URL that cold-launched the app.
         for url in pendingLaunchURLs { dispatch(url) }
         pendingLaunchURLs.removeAll()
-        Log.session.info("Jot launched (build \(Bundle.main.buildNumber, privacy: .public))")
+        Log.session.info("Sayo launched (build \(Bundle.main.buildNumber, privacy: .public))")
     }
 
     func applicationSupportsSecureRestorableState(_ app: NSApplication) -> Bool { true }

@@ -14,7 +14,7 @@
 
 # xcodegen project definition — regenerate the project with `xcodegen generate`.
 # The .xcodeproj is NOT checked in; this file is the source of truth.
-name: Jot
+name: Sayo
 options:
   createIntermediateGroups: true
   deploymentTarget:
@@ -25,13 +25,13 @@ packages:
     path: JotCore
 
 targets:
-  Jot:
+  Sayo:
     type: application
     platform: macOS
     settings:
       base:
-        PRODUCT_NAME: Jot
-        PRODUCT_BUNDLE_IDENTIFIER: com.ammaar.jot
+        PRODUCT_NAME: Sayo
+        PRODUCT_BUNDLE_IDENTIFIER: com.jay3oh5.sayo
         # Ammaar's PERSONAL Apple team. A personal open-source project must not
         # be signed under Google LLC's team, in development or in distribution.
         DEVELOPMENT_TEAM: 7S264298H8
@@ -39,8 +39,8 @@ targets:
         CODE_SIGN_ENTITLEMENTS: App/Jot.entitlements
         ENABLE_HARDENED_RUNTIME: NO # enabled for notarized release builds (M8)
         SWIFT_VERSION: "5.10"
-        MARKETING_VERSION: "0.5.0"
-        CURRENT_PROJECT_VERSION: "12"
+        MARKETING_VERSION: "0.6.0"
+        CURRENT_PROJECT_VERSION: "13"
         MACOSX_DEPLOYMENT_TARGET: "14.0"
       configs:
         # A clean clone must build with no Apple account at all — ./scripts/build.sh
@@ -56,6 +56,7 @@ targets:
           CODE_SIGNING_REQUIRED: NO
     sources:
       - path: App/Sources
+      - path: App/Resources/Sayo.icns
       - path: App/Resources/Jot.icns
       # Folder references (blue folders) so bundle subdirectory structure is preserved:
       # Contents/Resources/Fonts/GoogleSansFlex/… etc.
@@ -70,20 +71,20 @@ targets:
     info:
       path: App/Info.plist
       properties:
-        CFBundleDisplayName: Jot
-        CFBundleIconFile: Jot
+        CFBundleDisplayName: Sayo
+        CFBundleIconFile: Sayo
         # Without these the generated plist keeps xcodegen's default 1.0, so the
         # About panel and the DMG filename disagree about the version.
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         LSApplicationCategoryType: public.app-category.productivity
         LSUIElement: true # menu bar app: no Dock icon
-        NSMicrophoneUsageDescription: Jot records audio while you hold the dictation key, so it can transcribe what you say.
-        NSHumanReadableCopyright: "Copyright 2026 Google LLC. Apache License 2.0. This is not an officially supported Google product."
+        NSMicrophoneUsageDescription: Sayo records audio while you hold the dictation key, so it can transcribe what you say.
+        NSHumanReadableCopyright: "Copyright 2026 Jay (Fork Maintainer) and Google LLC (Original Jot Authors). Apache License 2.0. This is not an officially supported Google product."
         LSMinimumSystemVersion: "14.0"
         CFBundleURLTypes:
-          - CFBundleURLName: com.ammaar.jot.url
-            CFBundleURLSchemes: [jot]
+          - CFBundleURLName: com.jay3oh5.sayo.url
+            CFBundleURLSchemes: [sayo, jot]
     scheme:
       testTargets: []
       gatherCoverageData: false

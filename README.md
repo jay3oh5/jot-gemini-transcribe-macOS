@@ -1,23 +1,25 @@
 <div align="center">
 
-<img src="docs/images/icon.png" width="128" alt="Jot">
+<img src="docs/images/icon.png" width="128" alt="Sayo">
 
-# Jot
+# Sayo
 
-**[Gemini 3.5 Transcribe](https://ai.google.dev/gemini-api/docs/models/gemini-3.5-transcribe) Demo. Hold a key. Speak. It types.**
+**[Gemini 3.5 Transcribe](https://ai.google.dev/gemini-api/docs/models/gemini-3.5-transcribe). Hold a key. Speak. It types.**
 
 Smart dictation for macOS that puts polished text wherever your cursor is.
 
-<sub>Created by [Ammaar Reshi](https://x.com/ammaar) · Apache 2.0 licensed</sub>
+<sub>Maintained by [Jay](https://github.com/jay3oh5) · Forked from [Jot](https://github.com/google-gemini/jot-gemini-transcribe-macOS) by [Ammaar Reshi](https://x.com/ammaar) · Apache 2.0 licensed</sub>
 
 </div>
 
-This is not an officially supported Google product.
+This is an independent open-source fork and not an officially supported Google product.
 
 > [!TIP]
-> **Fork Enhancements (v0.4.1):**
+> **Sayo Enhancements (v0.6.0):**
 > - **Universal Binary Support:** Runs natively on both Intel (`x86_64`) and Apple Silicon (`arm64`) Macs.
 > - **CoreAudio Stability:** Eliminates background audio engine teardown crashes during device switches, headphone changes, and sleep/wake.
+> - **Voice Snippets & Text Expander:** Spoken trigger phrases automatically expand into templates or long text via Settings → Dictionary.
+> - **History Markdown Export & Audio Scrubbing:** Export transcripts to Markdown with one click and scrub audio with 1x-2x playback speeds in History.
 > - **Direct Download:** Download pre-built releases directly from [GitHub Releases](https://github.com/jay3oh5/jot-gemini-transcribe-macOS/releases).
 
 ---
@@ -28,7 +30,7 @@ Hold `fn`, say the thing, let go. A moment later your words are in the app you
 were already using — punctuated, filler words removed, cleaned up. No window to switch
 to, no transcript to copy, no account to make.
 
-<img width="640" height="294" alt="Jot preview" src="https://github.com/user-attachments/assets/669efea9-dbfe-4174-a8fe-748aab818f14" />
+<img width="640" height="294" alt="Sayo preview" src="https://github.com/user-attachments/assets/669efea9-dbfe-4174-a8fe-748aab818f14" />
 
 
 It is deliberately small: a menu bar icon, a pill at the bottom of your screen
@@ -47,7 +49,7 @@ The key is rebindable in Settings → General if `fn` is spoken for.
 ## What makes it different
 
 **It follows a change of mind.** Say *"let's meet at 1pm — actually, no, make it
-2pm"* and Jot writes **"Let's meet at 2pm."** That is the whole pitch, and
+2pm"* and Sayo writes **"Let's meet at 2pm."** That is the whole pitch, and
 onboarding makes you do it once so you believe it.
 
 **It never loses your words.** Audio goes to disk from the first millisecond, so
@@ -68,13 +70,13 @@ email vs. chat vs. code is available too, in Settings → Dictation.
 
 ## Install
 
-1. Download the latest `Jot-x.y.z.dmg` from [Releases](../../releases/latest).
-2. Drag Jot into **Applications** and launch it from there — apps run from a
+1. Download the latest `Sayo-x.y.z.dmg` (or universal zip) from [Releases](../../releases/latest).
+2. Drag Sayo into **Applications** and launch it from there — apps run from a
    mounted disk image are sandboxed by macOS and the permissions you grant will
    not stick.
 
 <div align="center">
-<img src="docs/images/installer.png" width="480" alt="Drag Jot to Applications">
+<img src="docs/images/installer.png" width="480" alt="Drag Sayo to Applications">
 </div>
 
 Setup takes about two minutes and the app walks you through it:
@@ -89,10 +91,10 @@ Setup takes about two minutes and the app walks you through it:
 
 **Cost:** you pay Google for what you dictate at
 [Gemini API pricing](https://ai.google.dev/pricing); a free tier exists and a
-typical dictation is a few seconds of audio. Jot itself is free and has no
+typical dictation is a few seconds of audio. Sayo itself is free and has no
 account.
 
-**Model:** Jot runs on Gemini's specialist transcription model,
+**Model:** Sayo runs on Gemini's specialist transcription model,
 `gemini-3.5-transcribe`. Your key needs access to it; setup tells you up front if
 it does not, instead of failing on your first dictation.
 
@@ -137,7 +139,7 @@ The `.xcodeproj` is generated, not checked in.
 brew install xcodegen
 ./scripts/build.sh          # xcodegen generate + xcodebuild
 ./scripts/test.sh           # swift test on JotCore
-open Jot.xcodeproj          # or work in Xcode
+open Sayo.xcodeproj         # or work in Xcode
 ```
 
 Debug builds sign ad-hoc, so a clean clone needs no Apple account, certificate,
@@ -162,11 +164,11 @@ Useful while hacking:
 
 ```bash
 # every surface is reachable headlessly
-open "jot://settings/about"      # or /general /dictation /privacy /advanced
-open "jot://history"  "jot://dictionary"  "jot://onboarding/5"
+open "sayo://settings/about"      # or /general /dictation /privacy /advanced
+open "sayo://history"  "sayo://dictionary"  "sayo://onboarding/5"
 
 # watch it work
-log show --last 5m --info --predicate 'subsystem == "com.ammaar.jot"'
+log show --last 5m --info --predicate 'subsystem == "com.jay3oh5.sayo"'
 ```
 
 Transcript text is logged as `private` and never appears in those logs.

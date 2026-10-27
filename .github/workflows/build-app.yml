@@ -25,12 +25,12 @@ jobs:
       - name: Generate Xcode Project
         run: xcodegen generate
 
-      - name: Build Universal Jot.app
+      - name: Build Universal Sayo.app
         run: |
           set -o pipefail
           xcodebuild build \
-            -project Jot.xcodeproj \
-            -scheme Jot \
+            -project Sayo.xcodeproj \
+            -scheme Sayo \
             -configuration Debug \
             -destination 'generic/platform=macOS' \
             ARCHS="x86_64 arm64" \
@@ -40,24 +40,24 @@ jobs:
 
       - name: Verify Architectures and Package
         run: |
-          APP_PATH=$(find ~/Library/Developer/Xcode/DerivedData -path "*/Build/Products/Debug/Jot.app" -type d | head -n 1)
-          if [ -z "$APP_PATH" ] || [ ! -f "$APP_PATH/Contents/MacOS/Jot" ]; then
-            echo "Jot.app executable not found at: $APP_PATH"
-            find ~/Library/Developer/Xcode/DerivedData -name "Jot.app" -type d
+          APP_PATH=$(find ~/Library/Developer/Xcode/DerivedData -path "*/Build/Products/Debug/Sayo.app" -type d | head -n 1)
+          if [ -z "$APP_PATH" ] || [ ! -f "$APP_PATH/Contents/MacOS/Sayo" ]; then
+            echo "Sayo.app executable not found at: $APP_PATH"
+            find ~/Library/Developer/Xcode/DerivedData -name "Sayo.app" -type d
             exit 1
           fi
           echo "Found app at: $APP_PATH"
           echo "Verifying binary architectures:"
-          file "$APP_PATH/Contents/MacOS/Jot"
+          file "$APP_PATH/Contents/MacOS/Sayo"
           mkdir -p build/dist
           cd "$(dirname "$APP_PATH")"
-          zip -r -y "$GITHUB_WORKSPACE/build/dist/Jot-Universal.zip" Jot.app
+          zip -r -y "$GITHUB_WORKSPACE/build/dist/Sayo-Universal.zip" Sayo.app
 
       - name: Upload Downloadable Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Jot-Universal-Debug
-          path: build/dist/Jot-Universal.zip
+          name: Sayo-Universal-Debug
+          path: build/dist/Sayo-Universal.zip
 
       - name: Extract Release Notes
         if: startsWith(github.ref, 'refs/tags/')
@@ -81,7 +81,7 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: build/dist/Jot-Universal.zip
+          files: build/dist/Sayo-Universal.zip
           body_path: RELEASE_NOTES.md
           generate_release_notes: false
 

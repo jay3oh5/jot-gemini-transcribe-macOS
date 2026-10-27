@@ -369,7 +369,7 @@ private struct APIKeyScreen: View {
     private var showingField: Bool { !storedKeyExists || replacing }
 
     var body: some View {
-        ScreenScaffold("Bring your own key.", "Jot uses your Gemini API key. It's stored in your Mac's Keychain and only ever sent to Google.") {
+        ScreenScaffold("Bring your own key.", "Sayo uses your Gemini API key. It's stored in your Mac's Keychain and only ever sent to Google.") {
             VStack(spacing: JotUI.Spacing.s) {
                 if !showingField {
                     Label("Key already in your Keychain", systemImage: "checkmark.circle.fill")
@@ -538,10 +538,10 @@ private struct MicScreen: View {
     }
     private var sub: String {
         if heard { return "Heard you loud and clear." }
-        if granted { return "Jot is listening — this just checks your mic." }
+        if granted { return "Sayo is listening — this just checks your mic." }
         return denied
-            ? "macOS only asks once. Turn Jot on under Privacy & Security → Microphone, then come back."
-            : "macOS asks once. Jot only ever records while you're dictating."
+            ? "macOS only asks once. Turn Sayo on under Privacy & Security → Microphone, then come back."
+            : "macOS asks once. Sayo only ever records while you're dictating."
     }
 
     var body: some View {
@@ -956,7 +956,7 @@ private struct TryItScreen: View {
                     // The two rows ARE the story — no caption needed.
                     VStack(alignment: .leading, spacing: 3) {
                         revealRow(label: "You said", value: raw, emphasized: false)
-                        revealRow(label: "Jot wrote", value: clean, emphasized: true)
+                        revealRow(label: "Sayo wrote", value: clean, emphasized: true)
                     }
                     .padding(JotUI.Spacing.s)
                     .frame(width: 400, alignment: .leading)
@@ -1074,7 +1074,7 @@ private struct DoneScreen: View {
     @State private var launchAtLogin = true
 
     var body: some View {
-        ScreenScaffold("You're set.", "Jot lives in your menu bar now. Hold \(SettingsStore().hotkeyKey.displayName) anywhere and start talking.") {
+        ScreenScaffold("You're set.", "Sayo lives in your menu bar now. Hold \(SettingsStore().hotkeyKey.displayName) anywhere and start talking.") {
             VStack(spacing: JotUI.Spacing.m) {
                 // Same voice as the scaffold's subtitle — two type sizes on the
                 // page total (display + body), never three.
@@ -1086,7 +1086,7 @@ private struct DoneScreen: View {
                     .multilineTextAlignment(.center)
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: 480)
-                Toggle("Start Jot at login", isOn: $launchAtLogin)
+                Toggle("Start Sayo at login", isOn: $launchAtLogin)
                     .toggleStyle(.checkbox)
                 PrimaryButton(title: "Start dictating") {
                     let enabled = SMAppService.mainApp.status == .enabled

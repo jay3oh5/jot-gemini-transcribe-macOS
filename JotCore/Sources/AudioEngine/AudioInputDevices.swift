@@ -33,6 +33,7 @@ public enum AudioInputDevices {
     public struct Device: Identifiable, Equatable, Sendable {
         public let id: AudioDeviceID
         public let name: String
+        public let uid: String
     }
 
     public static func list() -> [Device] {
@@ -50,8 +51,8 @@ public enum AudioInputDevices {
             return []
         }
         return ids.compactMap { id in
-            guard hasInputStreams(id), let name = name(of: id) else { return nil }
-            return Device(id: id, name: name)
+            guard hasInputStreams(id), let name = name(of: id), let uid = uid(of: id) else { return nil }
+            return Device(id: id, name: name, uid: uid)
         }
     }
 
@@ -89,6 +90,21 @@ public enum AudioInputDevices {
         currentDefaultID().flatMap(name(of:))
     }
 
+    /// Persistent UID of whatever the engine will record from right now.
+    public static func currentDefaultUID() -> String? {
+        currentDefaultID().flatMap(uid(of:))
+    }
+
+    /// Looks up the transient AudioDeviceID for a persistent CoreAudio device UID.
+    public static func id(for uid: String) -> AudioDeviceID? {
+        list().first(where: { $0.uid == uid })?.id
+    }
+
+    /// Looks up the device with the given persistent CoreAudio UID.
+    public static func device(forUID uid: String) -> Device? {
+        list().first(where: { $0.uid == uid })
+    }
+
     @discardableResult
     public static func setDefault(id: AudioDeviceID) -> Bool {
         var address = AudioObjectPropertyAddress(
@@ -105,6 +121,30 @@ public enum AudioInputDevices {
             Log.audio.error("AudioInputDevices: set default failed (\(status))")
         }
         return status == noErr
+    }
+
+    @discardableResult
+    public static func setDefault(uid: String) -> Bool {
+        guard let id = id(for: uid) else {
+            Log.audio.warning("AudioInputDevices: device with UID \(uid, privacy: .public) not found")
+            return false
+        }
+        return setDefault(id: id)
+    }
+
+    public static func uid(of id: AudioDeviceID) -> String? {
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioDevicePropertyDeviceUID,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        var uid: Unmanaged<CFString>?
+        var size = UInt32(MemoryLayout<Unmanaged<CFString>?>.size)
+        guard AudioObjectGetPropertyData(id, &address, 0, nil, &size, &uid) == noErr,
+              let cfUID = uid?.takeRetainedValue() else {
+            return nil
+        }
+        return cfUID as String
     }
 
     private static func hasInputStreams(_ id: AudioDeviceID) -> Bool {

@@ -24,7 +24,7 @@ final class SettingsLiveUpdateTests: XCTestCase {
     override func tearDown() {
         for key in ["showIdleIndicator", "soundsEnabled", "doubleTapLock", "gateTrips",
                     "experimentalNoiseHandling", "smartTranscription", "smartCleanupPass",
-                    "legacyTranscribeEndpoint"] {
+                    "legacyTranscribeEndpoint", "preferredInputDeviceUID", "restoreMicAfterDictation"] {
             UserDefaults.standard.removeObject(forKey: key)
         }
     }
@@ -53,6 +53,8 @@ final class SettingsLiveUpdateTests: XCTestCase {
         expectChange(forKey: "hotkeyKey") { settings.setHotkeyKey(.fn) }
         expectChange(forKey: "audioRetentionDays") { settings.setAudioRetentionDays(7) }
         expectChange(forKey: "experimentalNoiseHandling") { settings.setExperimentalNoiseHandling(true) }
+        expectChange(forKey: "preferredInputDeviceUID") { settings.setPreferredInputDeviceUID("test-device-uid") }
+        expectChange(forKey: "restoreMicAfterDictation") { settings.setRestoreMicAfterDictation(false) }
     }
 
     func testManualReEnableClearsGateTrips() {

@@ -43,6 +43,7 @@ final class DictationController {
     private var dismissTask: Task<Void, Never>?
     private var accessibilityPollTimer: Timer?
     private var didPromptAccessibilityThisSession = false
+    private var previousSystemDeviceUID: String?
 
     var onStatusChange: ((String) -> Void)?
     var onStatusItemState: ((StatusItemController.VisualState) -> Void)?
@@ -117,6 +118,37 @@ final class DictationController {
 
     deinit {
         accessibilityPollTimer?.invalidate()
+        if let previousUID = previousSystemDeviceUID {
+            if SettingsStore().restoreMicAfterDictation {
+                AudioInputDevices.setDefault(uid: previousUID)
+            }
+        }
+    }
+
+    private func prepareMicrophoneForDictation() {
+        let settings = SettingsStore()
+        guard let preferredUID = settings.preferredInputDeviceUID, !preferredUID.isEmpty else {
+            return
+        }
+        guard let currentUID = AudioInputDevices.currentDefaultUID() else { return }
+        if currentUID != preferredUID {
+            if AudioInputDevices.device(forUID: preferredUID) != nil {
+                Log.audio.info("Dictation starting — switching input to preferred mic: \(preferredUID, privacy: .public)")
+                previousSystemDeviceUID = currentUID
+                AudioInputDevices.setDefault(uid: preferredUID)
+            } else {
+                Log.audio.warning("Preferred mic \(preferredUID, privacy: .public) disconnected — using system default")
+            }
+        }
+    }
+
+    private func restoreMicrophoneAfterDictationIfNeeded() {
+        guard let previousUID = previousSystemDeviceUID else { return }
+        previousSystemDeviceUID = nil
+        let settings = SettingsStore()
+        guard settings.restoreMicAfterDictation else { return }
+        Log.audio.info("Dictation ended — restoring previous input mic: \(previousUID, privacy: .public)")
+        AudioInputDevices.setDefault(uid: previousUID)
     }
 
     private var needsOnboarding: Bool {
@@ -139,11 +171,15 @@ final class DictationController {
         Task { @MainActor [weak self] in
             for await intent in intentStream {
                 guard let self else { break }
+                if intent == .begin {
+                    self.prepareMicrophoneForDictation()
+                }
                 let accepted = self.coordinator.handle(intent)
                 if !accepted, intent == .begin {
                     // Refused begin (secure field / busy): the grammar armed a
                     // phantom session — snap it back or a Space-lock on it
                     // strands .locked and eats the next dictation.
+                    self.restoreMicrophoneAfterDictationIfNeeded()
                     self.engine.resetGrammar()
                 }
             }
@@ -374,6 +410,11 @@ final class DictationController {
             if engineActive, KeychainStore.loadAPIKey() != nil {
                 onStatusChange?("Ready — hold \(SettingsStore().hotkeyKey.displayName) to dictate")
             }
+        case "preferredInputDeviceUID":
+            let settings = SettingsStore()
+            if let uid = settings.preferredInputDeviceUID {
+                AudioInputDevices.setDefault(uid: uid)
+            }
         case "accessibility":
             // Granted mid-onboarding: wake the engine so the Try-It screen works.
             if !engineActive {
@@ -539,8 +580,13 @@ final class DictationController {
             }
             return
         }
-        coordinator.handle(.begin)
-        coordinator.handle(.lockIn)
+        prepareMicrophoneForDictation()
+        let accepted = coordinator.handle(.begin)
+        if accepted {
+            coordinator.handle(.lockIn)
+        } else {
+            restoreMicrophoneAfterDictationIfNeeded()
+        }
     }
 
     /// Cmd-Q mid-recording must not strand the words until next launch —
@@ -551,6 +597,7 @@ final class DictationController {
             Log.session.info("terminating — finalizing active dictation")
             coordinator.handle(.finalize)
         }
+        restoreMicrophoneAfterDictationIfNeeded()
     }
 
     func pasteLastTranscript() {
@@ -704,6 +751,7 @@ final class DictationController {
             onStatusItemState?(.processing)
 
         case .done(let outcome):
+            restoreMicrophoneAfterDictationIfNeeded()
             clearSlowTimer()
             onStatusItemState?(.idle)
             // The text has ALREADY landed at the cursor by now — insertion is not
@@ -723,6 +771,7 @@ final class DictationController {
             }
 
         case .cancelled:
+            restoreMicrophoneAfterDictationIfNeeded()
             clearSlowTimer()
             stopElapsedTimer()
             onStatusItemState?(.idle)
@@ -733,6 +782,7 @@ final class DictationController {
             setPill(.idleDot)
 
         case .failed(let failure):
+            restoreMicrophoneAfterDictationIfNeeded()
             clearSlowTimer()
             stopElapsedTimer()
             earcons.play(.error)

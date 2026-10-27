@@ -308,29 +308,45 @@ struct DictationPane: View {
     @State private var liveTranscription = SettingsStore().liveTranscription
     
     @State private var inputs: [AudioInputDevices.Device] = []
-    @State private var selectedInput: AudioDeviceID?
+    @State private var preferredInputUID: String? = SettingsStore().preferredInputDeviceUID
+    @State private var restoreMic: Bool = SettingsStore().restoreMicAfterDictation
+    @State private var currentSystemMicName: String? = AudioInputDevices.currentDefaultName()
 
     var body: some View {
         Form {
             Section {
-                if inputs.isEmpty {
-                    Text("No microphone detected").foregroundStyle(.secondary)
-                } else {
-                    Picker("Microphone", selection: Binding(
-                        get: { selectedInput ?? AudioInputDevices.currentDefaultID() },
-                        set: { newValue in
-                            guard let newValue, newValue != selectedInput else { return }
-                            selectedInput = newValue
-                            AudioInputDevices.setDefault(id: newValue)
+                Picker("Microphone", selection: Binding(
+                    get: { preferredInputUID ?? "system" },
+                    set: { newValue in
+                        let uid = (newValue == "system") ? nil : newValue
+                        preferredInputUID = uid
+                        settings.setPreferredInputDeviceUID(uid)
+                        if let uid {
+                            AudioInputDevices.setDefault(uid: uid)
                         }
-                    )) {
+                    }
+                )) {
+                    let sysTitle = currentSystemMicName.map { "System Default (\($0))" } ?? "System Default"
+                    Text(sysTitle).tag("system")
+                    if !inputs.isEmpty {
+                        Divider()
                         ForEach(inputs) { device in
-                            Text(device.name).tag(Optional(device.id))
+                            Text(device.name).tag(device.uid)
                         }
                     }
                 }
+                if preferredInputUID != nil {
+                    Toggle("Restore previous microphone after dictating", isOn: $restoreMic)
+                        .onChange(of: restoreMic) { _, restore in
+                            settings.setRestoreMicAfterDictation(restore)
+                        }
+                }
             } footer: {
-                Text("This sets the default macOS input device.")
+                if preferredInputUID == nil {
+                    Text("Jot records using whichever microphone your Mac is currently set to.")
+                } else {
+                    Text("Jot will always switch to this microphone when dictating.")
+                }
             }
             
             Section {
@@ -394,13 +410,21 @@ struct DictationPane: View {
         }
         .onAppear {
             inputs = AudioInputDevices.list()
-            selectedInput = AudioInputDevices.currentDefaultID()
+            currentSystemMicName = AudioInputDevices.currentDefaultName()
+            preferredInputUID = settings.preferredInputDeviceUID
+            restoreMic = settings.restoreMicAfterDictation
         }
         .onReceive(NotificationCenter.default.publisher(for: .jotDefaultInputChanged).receive(on: RunLoop.main)) { _ in
             inputs = AudioInputDevices.list()
-            selectedInput = AudioInputDevices.currentDefaultID()
+            currentSystemMicName = AudioInputDevices.currentDefaultName()
         }
         .onReceive(NotificationCenter.default.publisher(for: .gtSettingDidChange).receive(on: RunLoop.main)) { note in
+            if note.object as? String == "preferredInputDeviceUID" {
+                preferredInputUID = settings.preferredInputDeviceUID
+            }
+            if note.object as? String == "restoreMicAfterDictation" {
+                restoreMic = settings.restoreMicAfterDictation
+            }
             if note.object as? String == "smartTranscription" {
                 smartTranscription = settings.smartTranscriptionEnabled
             }

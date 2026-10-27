@@ -229,9 +229,14 @@ final class StatusItemController: NSObject {
         }
     }
 
+    @objc private func selectSystemDefaultMic() {
+        SettingsStore().setPreferredInputDeviceUID(nil)
+    }
+
     @objc private func selectMicrophone(_ sender: NSMenuItem) {
-        guard let id = sender.representedObject as? AudioDeviceID else { return }
-        AudioInputDevices.setDefault(id: id)
+        guard let uid = sender.representedObject as? String else { return }
+        SettingsStore().setPreferredInputDeviceUID(uid)
+        AudioInputDevices.setDefault(uid: uid)
     }
 }
 
@@ -241,8 +246,22 @@ extension StatusItemController: NSMenuDelegate {
     func menuNeedsUpdate(_ menu: NSMenu) {
         guard menu.title == "Microphone" else { return }
         menu.removeAllItems()
-        let current = AudioInputDevices.currentDefaultID()
+        let settings = SettingsStore()
+        let preferredUID = settings.preferredInputDeviceUID
+        let currentSystemName = AudioInputDevices.currentDefaultName() ?? "Default"
         let devices = AudioInputDevices.list()
+
+        let systemItem = NSMenuItem(
+            title: "System Default (\(currentSystemName))",
+            action: #selector(selectSystemDefaultMic),
+            keyEquivalent: ""
+        )
+        systemItem.target = self
+        systemItem.state = (preferredUID == nil) ? .on : .off
+        menu.addItem(systemItem)
+
+        menu.addItem(.separator())
+
         if devices.isEmpty {
             let none = NSMenuItem(title: "No microphones found", action: nil, keyEquivalent: "")
             none.isEnabled = false
@@ -252,12 +271,16 @@ extension StatusItemController: NSMenuDelegate {
         for device in devices {
             let item = NSMenuItem(title: device.name, action: #selector(selectMicrophone(_:)), keyEquivalent: "")
             item.target = self
-            item.representedObject = device.id
-            item.state = device.id == current ? .on : .off
+            item.representedObject = device.uid
+            item.state = (preferredUID == device.uid) ? .on : .off
             menu.addItem(item)
         }
         menu.addItem(.separator())
-        let note = NSMenuItem(title: "Sets your Mac's input device", action: nil, keyEquivalent: "")
+        let note = NSMenuItem(
+            title: preferredUID == nil ? "Uses your Mac's default microphone" : "Always dictates with this microphone",
+            action: nil,
+            keyEquivalent: ""
+        )
         note.isEnabled = false
         menu.addItem(note)
     }

@@ -110,6 +110,25 @@ public struct SettingsStore: Sendable {
         (Self.defaults.string(forKey: "hotkeyKey")).flatMap(HotkeyKey.init(rawValue:)) ?? .fn
     }
 
+    /// Persistent UID of the preferred microphone, or nil for "System Default".
+    public var preferredInputDeviceUID: String? {
+        Self.defaults.string(forKey: "preferredInputDeviceUID")
+    }
+
+    public func setPreferredInputDeviceUID(_ uid: String?) {
+        Self.set(uid, forKey: "preferredInputDeviceUID")
+    }
+
+    /// Whether to restore the previous macOS input device after dictation ends
+    /// if Jot had temporarily switched to the preferred microphone.
+    public var restoreMicAfterDictation: Bool {
+        Self.defaults.object(forKey: "restoreMicAfterDictation") as? Bool ?? true
+    }
+
+    public func setRestoreMicAfterDictation(_ restore: Bool) {
+        Self.set(restore, forKey: "restoreMicAfterDictation")
+    }
+
     // MARK: - Formatting policy
 
     /// How a dictation gets formatted. Two independent flags rather than a

@@ -41,6 +41,8 @@ final class DictationController {
     private var elapsedTimer: Timer?
     private var slowTimer: Timer?
     private var dismissTask: Task<Void, Never>?
+    private var accessibilityPollTimer: Timer?
+    private var didPromptAccessibilityThisSession = false
 
     var onStatusChange: ((String) -> Void)?
     var onStatusItemState: ((StatusItemController.VisualState) -> Void)?
@@ -111,6 +113,10 @@ final class DictationController {
             },
             makeLiveSession: Self.makeLiveSession
         )
+    }
+
+    deinit {
+        accessibilityPollTimer?.invalidate()
     }
 
     private var needsOnboarding: Bool {
@@ -204,6 +210,17 @@ final class DictationController {
             }
         }
 
+        NotificationCenter.default.addObserver(
+            forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                if !self.engineActive && AXIsProcessTrusted() {
+                    self.activateEngine()
+                }
+            }
+        }
+
         // Retention shouldn't depend on relaunches (audit L11): purge every 6h.
         Timer.scheduledTimer(withTimeInterval: 6 * 3600, repeats: true) { _ in
             Task.detached(priority: .utility) {
@@ -227,9 +244,39 @@ final class DictationController {
     /// paint "Ready" over an unstarted engine's attention message.
     private var engineActive = false
 
+    /// Triggers macOS's system permission dialog for Accessibility if not already trusted.
+    private func promptForAccessibility() {
+        guard !didPromptAccessibilityThisSession else { return }
+        didPromptAccessibilityThisSession = true
+        let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
+        _ = AXIsProcessTrustedWithOptions(options)
+    }
+
+    /// Monitors Accessibility status via polling when the engine is stopped due to missing permissions.
+    /// Once the user toggles Jot on in System Settings, automatically activates the engine without requiring a relaunch.
+    private func startAccessibilityMonitoring() {
+        guard accessibilityPollTimer == nil else { return }
+        accessibilityPollTimer = Timer.scheduledTimer(withTimeInterval: 1.5, repeats: true) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                if AXIsProcessTrusted() {
+                    self.stopAccessibilityMonitoring()
+                    Log.hotkey.info("Accessibility granted via poll — activating engine")
+                    self.activateEngine()
+                }
+            }
+        }
+    }
+
+    private func stopAccessibilityMonitoring() {
+        accessibilityPollTimer?.invalidate()
+        accessibilityPollTimer = nil
+    }
+
     private func activateEngine() {
         if engine.start() {
             engineActive = true
+            stopAccessibilityMonitoring()
             if KeychainStore.loadAPIKey() == nil {
                 // New-user path: dictation can't work yet — say exactly where to go.
                 onStatusChange?("Add your Gemini API key in Settings → Advanced")
@@ -250,8 +297,13 @@ final class DictationController {
             // lookup otherwise lands between transcript-ready and ⌘V.
             Task { @MainActor in PasteInserter.warmKeyboardLayout() }
         } else {
+            engineActive = false
             onStatusChange?("Grant Accessibility to enable the dictation key")
             onStatusItemState?(.attention)
+            if !AXIsProcessTrusted() {
+                promptForAccessibility()
+                startAccessibilityMonitoring()
+            }
         }
     }
 
@@ -466,12 +518,22 @@ final class DictationController {
     /// hotkey engine's grammar stays idle for these, so ending the session is via
     /// the pill's stop button or a press-and-release of the dictation key.
     func startHandsFree() {
+        if !engineActive && AXIsProcessTrusted() {
+            activateEngine()
+        }
         // No session without a visible pill and a working stop path: before the
         // engine is active there is no pill surface and no fn stop gesture — a
         // hot mic with zero UI (production pass 2).
         guard engineActive else {
             if needsOnboarding {
                 presentOnboarding()
+            } else if !AXIsProcessTrusted() {
+                promptForAccessibility()
+                startAccessibilityMonitoring()
+                if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
+                    NSWorkspace.shared.open(url)
+                }
+                NSSound.beep()
             } else {
                 NSSound.beep()
             }

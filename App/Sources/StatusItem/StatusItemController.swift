@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import AppKit
+import ApplicationServices
 import CoreAudio
 import JotCore
 
@@ -67,9 +68,12 @@ final class StatusItemController: NSObject {
         switch newState {
         case .idle:
             statusItem.button?.image = Self.glyph(barHeights: Self.idleBars, dimmed: false)
+            grantAccessibilityItem?.isHidden = true
         case .attention:
             statusItem.button?.image = Self.glyph(barHeights: Self.idleBars, dimmed: true)
+            grantAccessibilityItem?.isHidden = AXIsProcessTrusted()
         case .listening, .processing:
+            grantAccessibilityItem?.isHidden = true
             let interval = newState == .listening ? 0.12 : 0.25
             animationTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
                 self?.tickAnimation()
@@ -133,6 +137,7 @@ final class StatusItemController: NSObject {
     // MARK: - Menu
 
     private var statusLine: NSMenuItem?
+    private var grantAccessibilityItem: NSMenuItem?
 
     func setStatusLine(_ text: String) {
         statusLine?.title = text
@@ -145,6 +150,16 @@ final class StatusItemController: NSObject {
         status.isEnabled = false
         statusLine = status
         menu.addItem(status)
+
+        let grantAccessibility = NSMenuItem(
+            title: "Open Accessibility Settings…",
+            action: #selector(openAccessibilitySettings),
+            keyEquivalent: ""
+        )
+        grantAccessibility.target = self
+        grantAccessibility.isHidden = AXIsProcessTrusted()
+        grantAccessibilityItem = grantAccessibility
+        menu.addItem(grantAccessibility)
 
         menu.addItem(.separator())
 
@@ -204,6 +219,14 @@ final class StatusItemController: NSObject {
 
     @objc private func openAbout() {
         onOpenAbout()
+    }
+
+    @objc private func openAccessibilitySettings() {
+        let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
+        _ = AXIsProcessTrustedWithOptions(options)
+        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
+            NSWorkspace.shared.open(url)
+        }
     }
 
     @objc private func selectMicrophone(_ sender: NSMenuItem) {

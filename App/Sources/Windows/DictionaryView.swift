@@ -95,10 +95,12 @@ struct DictionaryView: View {
     }
     
     private var addIsDisabled: Bool {
+        let trimmedTerm = newTerm.trimmingCharacters(in: .whitespacesAndNewlines)
         if isSnippetMode {
-            return newTerm.isEmpty || newMisspelling.isEmpty
+            let trimmedTrigger = newMisspelling.trimmingCharacters(in: .whitespacesAndNewlines)
+            return trimmedTerm.isEmpty || trimmedTrigger.isEmpty
         } else {
-            return newTerm.isEmpty
+            return trimmedTerm.isEmpty
         }
     }
 
@@ -211,12 +213,13 @@ struct DictionaryView: View {
 
     private func add() {
         guard !addIsDisabled else { return }
-        guard store.add(term: newTerm, misspelling: newMisspelling.isEmpty ? nil : newMisspelling, isSnippet: isSnippetMode) else {
-            let trimmed = newTerm.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedTerm = newTerm.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedMisspelling = newMisspelling.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard store.add(term: trimmedTerm, misspelling: trimmedMisspelling.isEmpty ? nil : trimmedMisspelling, isSnippet: isSnippetMode) else {
             if isSnippetMode {
                 showFeedback("Trigger already exists or empty")
             } else {
-                showFeedback(trimmed.count > 60 ? "Keep terms under 60 characters" : "Already in your dictionary")
+                showFeedback(trimmedTerm.count > 60 ? "Keep terms under 60 characters" : "Already in your dictionary")
             }
             return
         }
@@ -231,7 +234,7 @@ struct DictionaryView: View {
 
     private func showFeedback(_ message: String) {
         feedback = message
-        Task {
+        Task { @MainActor in
             try? await Task.sleep(nanoseconds: 3_000_000_000)
             feedback = nil
         }

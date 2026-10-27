@@ -312,16 +312,20 @@ struct DictationPane: View {
     var body: some View {
         Form {
             Section {
-                Picker("Microphone", selection: Binding(
-                    get: { selectedInput ?? AudioInputDevices.currentDefaultID() },
-                    set: { newValue in
-                        guard let newValue, newValue != selectedInput else { return }
-                        selectedInput = newValue
-                        AudioInputDevices.setDefault(id: newValue)
-                    }
-                )) {
-                    ForEach(inputs) { device in
-                        Text(device.name).tag(Optional(device.id))
+                if inputs.isEmpty {
+                    Text("No microphone detected").foregroundStyle(.secondary)
+                } else {
+                    Picker("Microphone", selection: Binding(
+                        get: { selectedInput ?? AudioInputDevices.currentDefaultID() },
+                        set: { newValue in
+                            guard let newValue, newValue != selectedInput else { return }
+                            selectedInput = newValue
+                            AudioInputDevices.setDefault(id: newValue)
+                        }
+                    )) {
+                        ForEach(inputs) { device in
+                            Text(device.name).tag(Optional(device.id))
+                        }
                     }
                 }
             } footer: {

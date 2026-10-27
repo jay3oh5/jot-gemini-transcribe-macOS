@@ -110,6 +110,7 @@ final class ValidationGateTests: XCTestCase {
 
     func testStripsWrappingQuotes() {
         XCTAssertEqual(ValidationGate.stripArtifacts("\"Hello there.\""), "Hello there.")
+        XCTAssertEqual(ValidationGate.stripArtifacts("“Hello there.”"), "Hello there.")
     }
 
     func testLeavesInternalQuotesAlone() {

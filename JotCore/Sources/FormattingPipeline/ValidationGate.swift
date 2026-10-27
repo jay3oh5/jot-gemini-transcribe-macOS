@@ -50,7 +50,7 @@ public enum ValidationGate {
         for label in ["CLEAN:", "Clean:", "Transcript:", "TRANSCRIPT:"] where s.hasPrefix(label) {
             s = String(s.dropFirst(label.count)).trimmingCharacters(in: .whitespacesAndNewlines)
         }
-        if s.count > 1, s.hasPrefix("\""), s.hasSuffix("\"") {
+        if s.count > 1, (s.hasPrefix("\"") && s.hasSuffix("\"")) || (s.hasPrefix("“") && s.hasSuffix("”")) {
             s = String(s.dropFirst().dropLast())
         }
         return s

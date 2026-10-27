@@ -312,9 +312,11 @@ public final class AudioCaptureEngine: AudioCapturing {
         self.converter = converter
 
         let ratio = targetFormat.sampleRate / hwFormat.sampleRate
-        // Support up to 96kHz for 400ms: 96000 * 0.4s = 38400. 65536 is a safe power of two.
-        self.inputBufferPool = BufferPool(format: hwFormat, capacity: 65536)
-        let outputCapacity = AVAudioFrameCount(Double(65536) * ratio) + 64
+        // Support up to 192kHz for 500ms (192000 * 0.5 = 96000 frames). Dynamic sizing ensures
+        // high sample rate devices don't exceed buffer capacity and crash in AVAudioPCMBuffer.
+        let inputCapacity = max(65536, AVAudioFrameCount(hwFormat.sampleRate * 0.5))
+        self.inputBufferPool = BufferPool(format: hwFormat, capacity: inputCapacity)
+        let outputCapacity = max(16384, AVAudioFrameCount(Double(inputCapacity) * ratio) + 64)
         self.outputBufferPool = BufferPool(format: targetFormat, capacity: outputCapacity)
 
         // NOTE: bufferSize is a REQUEST, and AVAudioNode documents the supported
@@ -461,12 +463,19 @@ public final class AudioCaptureEngine: AudioCapturing {
     private func ingest(_ buffer: AVAudioPCMBuffer, hwRate: Double) {
         guard let inputBufferPool = self.inputBufferPool, let copiedBuffer = inputBufferPool.acquire() else { return }
         
+        guard buffer.frameLength <= copiedBuffer.frameCapacity else {
+            inputBufferPool.release(copiedBuffer)
+            Log.audio.error("AudioCaptureEngine: incoming buffer frameLength (\(buffer.frameLength)) exceeds pool capacity (\(copiedBuffer.frameCapacity))")
+            return
+        }
+        
         copiedBuffer.frameLength = buffer.frameLength
         let srcLists = UnsafeMutableAudioBufferListPointer(UnsafeMutablePointer(mutating: buffer.audioBufferList))
         let dstLists = UnsafeMutableAudioBufferListPointer(copiedBuffer.mutableAudioBufferList)
         for (srcList, dstList) in zip(srcLists, dstLists) {
             if let srcData = srcList.mData, let dstData = dstList.mData, srcList.mDataByteSize > 0 {
-                memcpy(dstData, srcData, Int(srcList.mDataByteSize))
+                let bytesToCopy = min(Int(srcList.mDataByteSize), Int(dstList.mDataByteSize))
+                memcpy(dstData, srcData, bytesToCopy)
             }
         }
         

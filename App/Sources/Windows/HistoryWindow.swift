@@ -400,7 +400,7 @@ struct HistoryPane: View {
         pasteboard.clearContents()
         pasteboard.setString(markdown, forType: .string)
         copiedExport = true
-        Task {
+        Task { @MainActor in
             try? await Task.sleep(nanoseconds: 2_000_000_000)
             copiedExport = false
         }
@@ -516,7 +516,11 @@ private struct RecordDetailSheet: View {
         }
         .padding(JotUI.Spacing.l)
         .frame(width: 520)
-        .onDisappear { player?.stop() }
+        .onDisappear {
+            player?.stop()
+            player = nil
+            currentTime = 0
+        }
         .onReceive(timer) { _ in
             if let p = player {
                 if p.isPlaying {
@@ -549,13 +553,17 @@ private struct RecordDetailSheet: View {
                     if player?.isPlaying == true {
                         player?.stop()
                         player = nil
+                        currentTime = 0
                     } else {
                         if player == nil {
                             player = try? AVAudioPlayer(contentsOf: cafURL)
                             player?.enableRate = true
                         }
                         player?.rate = playbackRate
-                        player?.play()
+                        if player?.play() != true {
+                            player = nil
+                            currentTime = 0
+                        }
                     }
                 } label: {
                     Label(player?.isPlaying == true ? "Stop" : "Play Audio",

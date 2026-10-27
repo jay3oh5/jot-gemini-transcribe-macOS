@@ -88,6 +88,18 @@ final class ReplacementEngineTests: XCTestCase {
         // Smart quote in rule matches straight quote in text
         let out2 = ReplacementEngine.apply([snippet("let’s go", "URL")], to: "Here is let's go link")
         XCTAssertEqual(out2, "Here is URL link")
+        
+        // Opening curly single quote in rule matches straight single quote in text
+        let out3 = ReplacementEngine.apply([snippet("my ‘quote’", "URL")], to: "Here is my 'quote' link")
+        XCTAssertEqual(out3, "Here is URL link")
+
+        // Straight double quote in rule matches curly double quotes in text
+        let out4 = ReplacementEngine.apply([snippet("my \"cool\" project", "Swift")], to: "Here is my “cool” project link")
+        XCTAssertEqual(out4, "Here is Swift link")
+
+        // Curly double quote in rule matches straight double quotes in text
+        let out5 = ReplacementEngine.apply([snippet("my “cool” project", "Swift")], to: "Here is my \"cool\" project link")
+        XCTAssertEqual(out5, "Here is Swift link")
     }
 
     func testSnippetSpecialRegexCharacters() {

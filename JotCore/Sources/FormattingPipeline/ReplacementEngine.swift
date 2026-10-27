@@ -40,10 +40,12 @@ public enum ReplacementEngine {
             
             // Build the pattern with resilience for phrase-level substitutions
             // 1. Literal spaces (single or consecutive) become \s+ to handle variable spacing
-            // 2. Straight or smart quotes become ['’] to handle dictation variants
+            // 2. Straight or smart single quotes become ['’‘] to handle dictation variants
+            // 3. Straight or smart double quotes become ["“”] to handle dictation variants
             var basePattern = NSRegularExpression.escapedPattern(for: rule.wrong)
             basePattern = basePattern.replacingOccurrences(of: " +", with: "\\\\s+", options: .regularExpression)
-            basePattern = basePattern.replacingOccurrences(of: "['’]", with: "['’]", options: .regularExpression)
+            basePattern = basePattern.replacingOccurrences(of: "['’‘]", with: "['’‘]", options: .regularExpression)
+            basePattern = basePattern.replacingOccurrences(of: "[\"“”]", with: "[\"“”]", options: .regularExpression)
             
             // Lookarounds instead of \b: word boundaries silently never match when
             // the wrong form starts/ends with punctuation ("e.g.", "c++") (audit L21).

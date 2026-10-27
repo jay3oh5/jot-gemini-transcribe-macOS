@@ -30,6 +30,7 @@ struct HistoryPane: View {
     @State private var detailRecord: DictationRecord?
     @State private var showAllAttention = false
     @State private var confirmingDiscardAll = false
+    @State private var copiedExport = false
     @Environment(\.colorScheme) private var scheme
     private var grad: CGFloat { scheme == .dark ? 25 : 0 }
 
@@ -75,13 +76,15 @@ struct HistoryPane: View {
                 Spacer()
                 
                 Button(action: exportHistory) {
-                    Label("Export History…", systemImage: "square.and.arrow.up")
+                    Label(copiedExport ? "Copied!" : "Export History…",
+                          systemImage: copiedExport ? "checkmark" : "square.and.arrow.up")
                 }
                 .buttonStyle(.plain)
                 .font(JotUI.TypeScale.labelSmall(grad: grad))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(copiedExport ? JotUI.Colors.primary : .secondary)
                 .help("Copy all visible dictations to clipboard as Markdown")
                 .accessibilityLabel("Export history to clipboard as Markdown")
+                .disabled(records.isEmpty)
                 
                 HStack(spacing: 3) {
                     ForEach(0..<4, id: \.self) { index in
@@ -385,6 +388,7 @@ struct HistoryPane: View {
     // MARK: - Actions
 
     private func exportHistory() {
+        guard !records.isEmpty else { return }
         var markdown = ""
         for record in records {
             let time = record.startedAt.formatted(date: .omitted, time: .shortened)
@@ -395,6 +399,11 @@ struct HistoryPane: View {
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
         pasteboard.setString(markdown, forType: .string)
+        copiedExport = true
+        Task {
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
+            copiedExport = false
+        }
     }
 
     private func copy(_ record: DictationRecord) {
@@ -509,8 +518,14 @@ private struct RecordDetailSheet: View {
         .frame(width: 520)
         .onDisappear { player?.stop() }
         .onReceive(timer) { _ in
-            if let p = player, p.isPlaying {
-                currentTime = p.currentTime
+            if let p = player {
+                if p.isPlaying {
+                    currentTime = p.currentTime
+                } else if currentTime > 0 {
+                    // Audio playback finished naturally
+                    player = nil
+                    currentTime = 0
+                }
             }
         }
     }

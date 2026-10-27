@@ -684,7 +684,6 @@ final class DictationController {
     private func handleOutcome(_ outcome: DictationOutcome) {
         switch outcome {
         case .inserted:
-            earcons.play(.success)
             let words = coordinator.lastResult.map { $0.split(separator: " ").count }
             setPill(.success(words: words))
             dismissAfter(0.7)

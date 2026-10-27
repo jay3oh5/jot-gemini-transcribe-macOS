@@ -72,6 +72,36 @@ public final class AudioCaptureEngine: AudioCapturing {
     private var consecutiveWriteFailures = 0
     private var writeFailureReported = false
 
+    private final class BufferPool {
+        private var pool = [AVAudioPCMBuffer]()
+        private let format: AVAudioFormat
+        private let capacity: AVAudioFrameCount
+        private let lock = NSLock()
+
+        init(format: AVAudioFormat, capacity: AVAudioFrameCount) {
+            self.format = format
+            self.capacity = capacity
+        }
+
+        func acquire() -> AVAudioPCMBuffer? {
+            lock.lock()
+            if let buffer = pool.popLast() {
+                lock.unlock()
+                return buffer
+            }
+            lock.unlock()
+            return AVAudioPCMBuffer(pcmFormat: format, frameCapacity: capacity)
+        }
+
+        func release(_ buffer: AVAudioPCMBuffer) {
+            lock.lock()
+            pool.append(buffer)
+            lock.unlock()
+        }
+    }
+    private var inputBufferPool: BufferPool?
+    private var outputBufferPool: BufferPool?
+
     // Level metering (throttled to ~30Hz)
     private var levelAccumulator: Float = 0
     private var levelSampleCount = 0
@@ -281,6 +311,12 @@ public final class AudioCaptureEngine: AudioCapturing {
         guard let converter else { throw CaptureError.converterUnavailable }
         self.converter = converter
 
+        let ratio = targetFormat.sampleRate / hwFormat.sampleRate
+        // Support up to 96kHz for 400ms: 96000 * 0.4s = 38400. 65536 is a safe power of two.
+        self.inputBufferPool = BufferPool(format: hwFormat, capacity: 65536)
+        let outputCapacity = AVAudioFrameCount(Double(65536) * ratio) + 64
+        self.outputBufferPool = BufferPool(format: targetFormat, capacity: outputCapacity)
+
         // NOTE: bufferSize is a REQUEST, and AVAudioNode documents the supported
         // range as [100, 400]ms — 1024 frames is silently clamped, so buffers
         // really arrive at ~10Hz, not the ~47Hz this comment used to claim
@@ -423,18 +459,37 @@ public final class AudioCaptureEngine: AudioCapturing {
     }
 
     private func ingest(_ buffer: AVAudioPCMBuffer, hwRate: Double) {
-        logFirstBufferIfNeeded(buffer)
-        meterLevel(of: buffer)
+        guard let inputBufferPool = self.inputBufferPool, let copiedBuffer = inputBufferPool.acquire() else { return }
+        
+        copiedBuffer.frameLength = buffer.frameLength
+        let srcLists = UnsafeMutableAudioBufferListPointer(UnsafeMutablePointer(mutating: buffer.audioBufferList))
+        let dstLists = UnsafeMutableAudioBufferListPointer(copiedBuffer.mutableAudioBufferList)
+        for (srcList, dstList) in zip(srcLists, dstLists) {
+            if let srcData = srcList.mData, let dstData = dstList.mData, srcList.mDataByteSize > 0 {
+                memcpy(dstData, srcData, Int(srcList.mDataByteSize))
+            }
+        }
+        
         queue.async { [weak self] in
-            guard let self, let converter = self.converter, let writer = self.writer else { return }
+            guard let self else { return }
+            defer { self.inputBufferPool?.release(copiedBuffer) }
+            
+            self.logFirstBufferIfNeeded(copiedBuffer)
+            self.meterLevel(of: copiedBuffer)
+            
+            guard let converter = self.converter, let writer = self.writer else { return }
             self.stateLock.lock()
             let isStopped = self.stopped
             self.stateLock.unlock()
             guard !isStopped else { return }
 
+            guard let outputBufferPool = self.outputBufferPool, let out = outputBufferPool.acquire() else { return }
+            defer { self.outputBufferPool?.release(out) }
+            
             let ratio = self.targetFormat.sampleRate / hwRate
-            let capacity = AVAudioFrameCount(Double(buffer.frameLength) * ratio) + 64
-            guard let out = AVAudioPCMBuffer(pcmFormat: self.targetFormat, frameCapacity: capacity) else { return }
+            _ = AVAudioFrameCount(Double(copiedBuffer.frameLength) * ratio) + 64
+            // Though out has larger frameCapacity, we reset its frameLength before writing
+            out.frameLength = 0 
 
             var fed = false
             var error: NSError?
@@ -445,7 +500,7 @@ public final class AudioCaptureEngine: AudioCapturing {
                 }
                 fed = true
                 status.pointee = .haveData
-                return buffer
+                return copiedBuffer
             }
             if let error {
                 Log.audio.error("AudioCaptureEngine: convert failed: \(error)")
@@ -515,19 +570,21 @@ public final class AudioCaptureEngine: AudioCapturing {
     /// RMS of channel 0, whatever the sample format. Returns nil only when the
     /// buffer exposes neither Float32 nor Int16 channel data.
     static func meanSquareRoot(of buffer: AVAudioPCMBuffer) -> Float? {
-        let count = vDSP_Length(buffer.frameLength)
-        var rms: Float = 0
+        let count = Int(buffer.frameLength)
+        guard count > 0 else { return 0 }
         if let floats = buffer.floatChannelData?[0] {
-            vDSP_rmsqv(floats, 1, &rms, count)
+            var rms: Float = 0
+            vDSP_rmsqv(floats, 1, &rms, vDSP_Length(count))
             return rms
         }
         if let ints = buffer.int16ChannelData?[0] {
-            var scratch = [Float](repeating: 0, count: Int(buffer.frameLength))
-            vDSP_vflt16(ints, 1, &scratch, 1, count)
-            var scale = Float(1.0 / 32_768.0)
-            vDSP_vsmul(scratch, 1, &scale, &scratch, 1, count)
-            vDSP_rmsqv(scratch, 1, &rms, count)
-            return rms
+            var sumSq: Float = 0
+            let scale: Float = 1.0 / 32_768.0
+            for i in 0..<count {
+                let val = Float(ints[i]) * scale
+                sumSq += val * val
+            }
+            return sqrt(sumSq / Float(count))
         }
         return nil
     }

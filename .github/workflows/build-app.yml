@@ -31,6 +31,7 @@ jobs:
             -project Jot.xcodeproj \
             -scheme Jot \
             -configuration Debug \
+            -derivedDataPath build/DerivedData \
             -destination 'generic/platform=macOS' \
             ARCHS="x86_64 arm64" \
             ONLY_ACTIVE_ARCH=NO \
@@ -39,9 +40,10 @@ jobs:
 
       - name: Verify Architectures and Package
         run: |
-          APP_PATH=$(find ~/Library/Developer/Xcode/DerivedData -name "Jot.app" -type d | head -n 1)
-          if [ -z "$APP_PATH" ]; then
-            echo "Jot.app not found in DerivedData"
+          APP_PATH="build/DerivedData/Build/Products/Debug/Jot.app"
+          if [ ! -d "$APP_PATH" ] || [ ! -f "$APP_PATH/Contents/MacOS/Jot" ]; then
+            echo "Jot.app or binary not found at $APP_PATH"
+            find build/DerivedData -name "Jot.app" -type d
             exit 1
           fi
           echo "Found app at: $APP_PATH"

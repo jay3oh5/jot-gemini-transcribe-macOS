@@ -80,7 +80,7 @@ struct CorrectionView: View {
             ForEach(Array(segments.enumerated()), id: \.offset) { _, segment in
                 if segment.isCut {
                     Text(segment.text)
-                        .foregroundStyle(marked ? Self.cutInk : JotUI.Colors.onSurfaceVariant)
+                        .foregroundStyle(marked ? Self.cutInk : JotUI.Colors.onSurface)
                         .strikethrough(marked, color: Self.cutInk)
                         // Collapsing horizontally is what makes the sentence
                         // close up. Fading alone would leave a hole where the
@@ -91,7 +91,7 @@ struct CorrectionView: View {
                         .clipped()
                 } else {
                     Text(segment.text)
-                        .foregroundStyle(JotUI.Colors.onSurfaceVariant)
+                        .foregroundStyle(JotUI.Colors.onSurface)
                         .fixedSize()
                 }
             }
@@ -102,6 +102,7 @@ struct CorrectionView: View {
         // VoiceOver gets the finished sentence once, not a sequence of edits.
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(segments.filter { !$0.isCut }.map(\.text).joined())
+        .accessibilityAddTraits(.isStaticText)
     }
 
     private func run() {

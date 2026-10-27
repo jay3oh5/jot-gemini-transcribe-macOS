@@ -61,4 +61,46 @@ final class ReplacementEngineTests: XCTestCase {
         let out = ReplacementEngine.apply([rule("amar", "Ammaar")], to: "amar told amar's team")
         XCTAssertEqual(out, "Ammaar told Ammaar's team")
     }
+    
+    private func snippet(_ wrong: String, _ right: String) -> ReplacementEngine.Rule {
+        .init(wrong: wrong, right: right, isSnippet: true)
+    }
+    
+    func testSnippetExpansion() {
+        let out = ReplacementEngine.apply([snippet("my calendly", "https://calendly.com/test")], to: "Here is my calendly link")
+        XCTAssertEqual(out, "Here is https://calendly.com/test link")
+    }
+    
+    func testSnippetVariableSpacing() {
+        // "my calendly" should handle multiple spaces in text or rule
+        let out = ReplacementEngine.apply([snippet("my calendly", "URL")], to: "Here is my  calendly link")
+        XCTAssertEqual(out, "Here is URL link")
+        
+        let out2 = ReplacementEngine.apply([snippet("my  calendly", "URL")], to: "Here is my calendly link")
+        XCTAssertEqual(out2, "Here is URL link")
+    }
+    
+    func testSnippetSmartQuotes() {
+        // Straight quote in rule matches smart quote in text
+        let out = ReplacementEngine.apply([snippet("my 'quote'", "URL")], to: "Here is my ’quote’ link")
+        XCTAssertEqual(out, "Here is URL link")
+        
+        // Smart quote in rule matches straight quote in text
+        let out2 = ReplacementEngine.apply([snippet("let’s go", "URL")], to: "Here is let's go link")
+        XCTAssertEqual(out2, "Here is URL link")
+    }
+
+    func testSnippetSpecialRegexCharacters() {
+        let out = ReplacementEngine.apply([snippet("c++ project", "Swift")], to: "Working on a c++ project today")
+        XCTAssertEqual(out, "Working on a Swift today")
+
+        let out2 = ReplacementEngine.apply([snippet("$100 discount", "deal")], to: "Get the $100 discount now")
+        XCTAssertEqual(out2, "Get the deal now")
+    }
+    
+    func testSnippetDoesNotPropagateCase() {
+        // Snippets should strictly keep their own casing, even if trigger was capitalized
+        let out = ReplacementEngine.apply([snippet("my email", "test@Example.com")], to: "My email is...")
+        XCTAssertEqual(out, "test@Example.com is...")
+    }
 }

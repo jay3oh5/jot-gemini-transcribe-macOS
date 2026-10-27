@@ -26,6 +26,7 @@ struct DictionaryView: View {
     @State private var newTerm = ""
     @State private var newMisspelling = ""
     @State private var search = ""
+    @State private var isSnippetMode = false
     /// Transient feedback under the add row / in the footer ("Already in your
     /// dictionary", "Imported 12 words") — silence on a failed action reads as
     /// a broken button.
@@ -47,28 +48,58 @@ struct DictionaryView: View {
     }
 
     private var addRow: some View {
-        HStack(spacing: JotUI.Spacing.xs) {
-            TextField("Add a word or phrase…", text: $newTerm)
-                .textFieldStyle(.plain)
-                .font(JotUI.TypeScale.body(grad: grad))
-                .onSubmit(add)
-            TextField("Gemini hears it as… (optional)", text: $newMisspelling)
-                .textFieldStyle(.plain)
-                .font(JotUI.TypeScale.body(grad: grad))
-                .foregroundStyle(JotUI.Colors.onSurfaceVariant)
-                .onSubmit(add)
-            Button(action: add) {
-                Image(systemName: "plus.circle.fill")
-                    .foregroundStyle(newTerm.isEmpty ? JotUI.Colors.onSurfaceVariant : JotUI.Colors.primary)
+        VStack(alignment: .leading, spacing: JotUI.Spacing.s) {
+            Picker("Mode", selection: $isSnippetMode) {
+                Text("Words").tag(false)
+                Text("Snippets").tag(true)
             }
-            .buttonStyle(.plain)
-            .disabled(newTerm.isEmpty)
-            .help("Add word")
-            .accessibilityLabel("Add word")
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .frame(maxWidth: 200)
+
+            HStack(spacing: JotUI.Spacing.xs) {
+                if isSnippetMode {
+                    TextField("Spoken phrase…", text: $newMisspelling)
+                        .textFieldStyle(.plain)
+                        .font(JotUI.TypeScale.body(grad: grad))
+                        .onSubmit(add)
+                    TextField("Expands to…", text: $newTerm)
+                        .textFieldStyle(.plain)
+                        .font(JotUI.TypeScale.body(grad: grad))
+                        .onSubmit(add)
+                } else {
+                    TextField("Add a word or phrase…", text: $newTerm)
+                        .textFieldStyle(.plain)
+                        .font(JotUI.TypeScale.body(grad: grad))
+                        .onSubmit(add)
+                    TextField("Gemini hears it as… (optional)", text: $newMisspelling)
+                        .textFieldStyle(.plain)
+                        .font(JotUI.TypeScale.body(grad: grad))
+                        .foregroundStyle(JotUI.Colors.onSurfaceVariant)
+                        .onSubmit(add)
+                }
+                
+                Button(action: add) {
+                    Image(systemName: "plus.circle.fill")
+                        .foregroundStyle(addIsDisabled ? JotUI.Colors.onSurfaceVariant : JotUI.Colors.primary)
+                }
+                .buttonStyle(.plain)
+                .disabled(addIsDisabled)
+                .help(isSnippetMode ? "Add snippet" : "Add word")
+                .accessibilityLabel(isSnippetMode ? "Add snippet" : "Add word")
+            }
+            .padding(JotUI.Spacing.s)
+            .background(RoundedRectangle(cornerRadius: JotUI.Radius.medium).fill(JotUI.Colors.surfaceContainer))
         }
-        .padding(JotUI.Spacing.s)
-        .background(RoundedRectangle(cornerRadius: JotUI.Radius.medium).fill(JotUI.Colors.surfaceContainer))
         .padding(JotUI.Spacing.m)
+    }
+    
+    private var addIsDisabled: Bool {
+        if isSnippetMode {
+            return newTerm.isEmpty || newMisspelling.isEmpty
+        } else {
+            return newTerm.isEmpty
+        }
     }
 
     private var filtered: [FilteredEntry] {
@@ -100,17 +131,26 @@ struct DictionaryView: View {
                         .foregroundStyle(entry.starred ? JotUI.Colors.gYellow : JotUI.Colors.onSurfaceVariant.opacity(0.5))
                 }
                 .buttonStyle(.plain)
-                .help(entry.starred ? "Unstar word" : "Star word")
-                .accessibilityLabel(entry.starred ? "Unstar word" : "Star word")
+                .help(entry.starred ? (entry.isSnippet == true ? "Unstar snippet" : "Unstar word") : (entry.isSnippet == true ? "Star snippet" : "Star word"))
+                .accessibilityLabel(entry.starred ? (entry.isSnippet == true ? "Unstar snippet" : "Unstar word") : (entry.isSnippet == true ? "Star snippet" : "Star word"))
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(entry.term)
-                        .font(JotUI.TypeScale.body(grad: grad))
-                        .foregroundStyle(JotUI.Colors.onSurface)
-                    if let misspelling = entry.misspelling, !misspelling.isEmpty {
-                        Text("\"\(misspelling)\" → \(entry.term)")
+                    if entry.isSnippet == true {
+                        Text("\"\(entry.misspelling ?? "")\" expands to:")
                             .font(JotUI.TypeScale.labelSmall(grad: grad))
                             .foregroundStyle(JotUI.Colors.onSurfaceVariant)
+                        Text(entry.term)
+                            .font(JotUI.TypeScale.body(grad: grad))
+                            .foregroundStyle(JotUI.Colors.onSurface)
+                    } else {
+                        Text(entry.term)
+                            .font(JotUI.TypeScale.body(grad: grad))
+                            .foregroundStyle(JotUI.Colors.onSurface)
+                        if let misspelling = entry.misspelling, !misspelling.isEmpty {
+                            Text("\"\(misspelling)\" → \(entry.term)")
+                                .font(JotUI.TypeScale.labelSmall(grad: grad))
+                                .foregroundStyle(JotUI.Colors.onSurfaceVariant)
+                        }
                     }
                 }
                 Spacer()
@@ -123,8 +163,8 @@ struct DictionaryView: View {
                         .foregroundStyle(JotUI.Colors.onSurfaceVariant)
                 }
                 .buttonStyle(.plain)
-                .help("Remove word")
-                .accessibilityLabel("Remove word")
+                .help(entry.isSnippet == true ? "Remove snippet" : "Remove word")
+                .accessibilityLabel(entry.isSnippet == true ? "Remove snippet" : "Remove word")
             }
             .padding(.vertical, 2)
         }
@@ -170,9 +210,14 @@ struct DictionaryView: View {
     // MARK: - Actions
 
     private func add() {
-        guard store.add(term: newTerm, misspelling: newMisspelling.isEmpty ? nil : newMisspelling) else {
+        guard !addIsDisabled else { return }
+        guard store.add(term: newTerm, misspelling: newMisspelling.isEmpty ? nil : newMisspelling, isSnippet: isSnippetMode) else {
             let trimmed = newTerm.trimmingCharacters(in: .whitespacesAndNewlines)
-            showFeedback(trimmed.count > 60 ? "Keep terms under 60 characters" : "Already in your dictionary")
+            if isSnippetMode {
+                showFeedback("Trigger already exists or empty")
+            } else {
+                showFeedback(trimmed.count > 60 ? "Keep terms under 60 characters" : "Already in your dictionary")
+            }
             return
         }
         newTerm = ""

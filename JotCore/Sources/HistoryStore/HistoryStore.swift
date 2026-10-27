@@ -309,14 +309,14 @@ public final class HistoryStore: @unchecked Sendable {
     public func stats() -> Stats {
         (try? queue.read { db in
             let rows = try Row.fetchAll(db, sql: """
-                SELECT cleanedTranscript, durationSeconds FROM dictation
-                WHERE cleanedTranscript IS NOT NULL
+                SELECT cleanedTranscript, rawTranscript, durationSeconds FROM dictation
+                WHERE cleanedTranscript IS NOT NULL OR rawTranscript IS NOT NULL
                 """)
             var words = 0
             var timedWords = 0
             var speech = 0.0
             for row in rows {
-                let text: String = row["cleanedTranscript"] ?? ""
+                let text: String = (row["cleanedTranscript"] as? String) ?? (row["rawTranscript"] as? String) ?? ""
                 // Whitespace-aware split (newlines count too — audit L29).
                 let count = text.split(whereSeparator: \.isWhitespace).count
                 words += count

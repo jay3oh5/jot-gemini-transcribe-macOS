@@ -22,10 +22,12 @@ public enum ReplacementEngine {
     public struct Rule: Codable, Equatable, Sendable {
         public var wrong: String
         public var right: String
+        public var isSnippet: Bool
 
-        public init(wrong: String, right: String) {
+        public init(wrong: String, right: String, isSnippet: Bool = false) {
             self.wrong = wrong
             self.right = right
+            self.isSnippet = isSnippet
         }
     }
 
@@ -35,15 +37,25 @@ public enum ReplacementEngine {
         // Longest wrong-form first so "gemini api" wins over "gemini".
         for rule in rules.sorted(by: { $0.wrong.count > $1.wrong.count }) {
             guard !rule.wrong.isEmpty else { continue }
+            
+            // Build the pattern with resilience for phrase-level substitutions
+            // 1. Literal spaces (single or consecutive) become \s+ to handle variable spacing
+            // 2. Straight or smart quotes become ['’] to handle dictation variants
+            var basePattern = NSRegularExpression.escapedPattern(for: rule.wrong)
+            basePattern = basePattern.replacingOccurrences(of: " +", with: "\\\\s+", options: .regularExpression)
+            basePattern = basePattern.replacingOccurrences(of: "['’]", with: "['’]", options: .regularExpression)
+            
             // Lookarounds instead of \b: word boundaries silently never match when
             // the wrong form starts/ends with punctuation ("e.g.", "c++") (audit L21).
-            let pattern = "(?<![\\w])\(NSRegularExpression.escapedPattern(for: rule.wrong))(?![\\w])"
+            let pattern = "(?<![\\w])\(basePattern)(?![\\w])"
             guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) else { continue }
             let matches = regex.matches(in: result, range: NSRange(result.startIndex..., in: result)).reversed()
             for match in matches {
                 guard let range = Range(match.range, in: result) else { continue }
                 let original = String(result[range])
-                result.replaceSubrange(range, with: propagateCase(from: original, to: rule.right, wrong: rule.wrong))
+                
+                let replacement = rule.isSnippet ? rule.right : propagateCase(from: original, to: rule.right, wrong: rule.wrong)
+                result.replaceSubrange(range, with: replacement)
             }
         }
         return result

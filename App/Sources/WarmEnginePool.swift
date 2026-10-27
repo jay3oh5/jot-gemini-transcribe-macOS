@@ -29,11 +29,14 @@ import JotCore
 @MainActor
 final class WarmEnginePool {
     private var spare: AudioCaptureEngine?
-    private var buildingSpare = false
+    private var prewarmTask: Task<Void, Never>?
+    private var refreshTask: Task<Void, Never>?
 
     /// The engine for a session that is starting right now. Immediately begins
     /// building the next spare so back-to-back dictations stay warm.
     func take() -> AudioCaptureEngine {
+        refreshTask?.cancel()
+        refreshTask = nil
         defer { prewarmNext() }
         if let spare {
             self.spare = nil
@@ -45,18 +48,31 @@ final class WarmEnginePool {
     }
 
     func prewarmNext() {
-        guard spare == nil, !buildingSpare else { return }
+        guard spare == nil, prewarmTask == nil else { return }
         // Never touch the mic stack before the user has granted access: doing so
         // would trigger the permission prompt out of nowhere.
         guard AVCaptureDevice.authorizationStatus(for: .audio) == .authorized else { return }
-        buildingSpare = true
-        Task.detached(priority: .utility) {
+        prewarmTask = Task.detached(priority: .utility) { [weak self] in
             let engine = AudioCaptureEngine()
             engine.prewarm()
+            if Task.isCancelled {
+                engine.cancel()
+                await MainActor.run { [weak self] in
+                    self?.prewarmTask = nil
+                }
+                return
+            }
             await MainActor.run { [weak self] in
-                guard let self else { return }
-                self.buildingSpare = false
-                self.spare = engine
+                guard let self else {
+                    engine.cancel()
+                    return
+                }
+                self.prewarmTask = nil
+                if self.spare == nil {
+                    self.spare = engine
+                } else {
+                    engine.cancel()
+                }
             }
         }
     }
@@ -64,13 +80,28 @@ final class WarmEnginePool {
     /// Drop the spare (e.g. the input device changed under it) and build a fresh
     /// one for the new route.
     func refresh() {
+        refreshTask?.cancel()
+        prewarmTask?.cancel()
+        prewarmTask = nil
+
         let oldSpare = spare
         spare = nil
         oldSpare?.cancel()
-        prewarmNext()
+
+        // Debounce: hardware route changes often fire multiple notifications in
+        // rapid succession. Delay 500ms so CoreAudio has settled before building
+        // the new warm engine.
+        refreshTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 500_000_000)
+            guard !Task.isCancelled else { return }
+            self.refreshTask = nil
+            self.prewarmNext()
+        }
     }
 
     deinit {
+        refreshTask?.cancel()
+        prewarmTask?.cancel()
         spare?.cancel()
     }
 }

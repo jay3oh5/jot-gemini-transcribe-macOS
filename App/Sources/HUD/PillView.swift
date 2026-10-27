@@ -30,6 +30,7 @@ struct PillView: View {
             // their children or VoiceOver users can't stop a locked recording.
             .accessibilityElement(children: hasInteractiveControls ? .contain : .ignore)
             .accessibilityLabel(accessibilityDescription)
+            .accessibilityAddTraits(hasInteractiveControls ? [] : .isStaticText)
     }
 
     private var hasInteractiveControls: Bool {
@@ -40,7 +41,15 @@ struct PillView: View {
     }
 
     private var spatial: Animation {
-        reduceMotion ? .linear(duration: 0.15) : JotMotion.expressiveDefaultSpatial
+        if reduceMotion {
+            return .linear(duration: 0.15)
+        }
+        switch model.state {
+        case .idleDot, .listening(locked: true), .success:
+            return JotMotion.expressiveDefaultSpatial
+        default:
+            return JotMotion.defaultSpatial
+        }
     }
 
     @ViewBuilder
@@ -62,20 +71,20 @@ struct PillView: View {
                     if locked {
                         Image(systemName: "lock.fill")
                             .font(.system(size: 11))
-                            .foregroundStyle(JotUI.Colors.onSurfaceVariant)
+                            .foregroundStyle(JotUI.Colors.onSurface)
                         Text(timerText)
                             .font(JotUI.TypeScale.numeric())
-                            .foregroundStyle(JotUI.Colors.onSurfaceVariant)
+                            .foregroundStyle(JotUI.Colors.onSurface)
                     } else if model.elapsed >= 10 {
                         Text(timerText)
                             .font(JotUI.TypeScale.numeric())
-                            .foregroundStyle(JotUI.Colors.onSurfaceVariant)
+                            .foregroundStyle(JotUI.Colors.onSurface)
                     }
                     WaveformView(level: model.level, processing: false)
                     if !model.partial.isEmpty {
                         Text(model.partial)
                             .font(JotUI.TypeScale.labelSmall())
-                            .foregroundStyle(JotUI.Colors.onSurfaceVariant)
+                            .foregroundStyle(JotUI.Colors.onSurface)
                             .lineLimit(1)
                             .truncationMode(.head) // the newest words matter most
                             .frame(maxWidth: .infinity, alignment: .trailing)
@@ -106,7 +115,7 @@ struct PillView: View {
                         if model.slow {
                             Text("Still working…")
                                 .font(JotUI.TypeScale.label())
-                                .foregroundStyle(JotUI.Colors.onSurfaceVariant)
+                                .foregroundStyle(JotUI.Colors.onSurface)
                                 .transition(.opacity)
                         }
                     }
@@ -121,7 +130,7 @@ struct PillView: View {
                         if model.correction.isEmpty {
                             Text(model.partial)
                                 .font(JotUI.TypeScale.labelSmall())
-                                .foregroundStyle(JotUI.Colors.onSurfaceVariant)
+                                .foregroundStyle(JotUI.Colors.onSurface)
                                 .lineLimit(1)
                                 .truncationMode(.head)
                                 .frame(maxWidth: .infinity, alignment: .trailing)
@@ -195,6 +204,7 @@ struct PillView: View {
             .frame(width: 32, height: 32)
         }
         .buttonStyle(.plain)
+        .focusable()
         .accessibilityLabel("Stop dictation and insert text")
     }
 
@@ -209,7 +219,7 @@ struct PillView: View {
             if let words, words > 20 {
                 Text("\(words) words")
                     .font(JotUI.TypeScale.labelSmall())
-                    .foregroundStyle(JotUI.Colors.onSurfaceVariant)
+                    .foregroundStyle(JotUI.Colors.onSurface)
             }
         }
         .transition(.scale(scale: 0.6).combined(with: .opacity))
@@ -261,7 +271,12 @@ struct PillView: View {
 /// hands-free.
 private struct IdleDotView: View {
     @State private var hovering = false
+    @FocusState private var isFocused: Bool
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private var isActive: Bool {
+        hovering || isFocused
+    }
 
     /// The goo: low damping + longer response = visible squish and overshoot.
     private static let bloom = Animation.spring(response: 0.45, dampingFraction: 0.55)
@@ -283,21 +298,22 @@ private struct IdleDotView: View {
                     .foregroundStyle(JotUI.Colors.onSurface)
                     .fixedSize()
             }
-            .opacity(hovering ? 1 : 0)
-            .scaleEffect(hovering ? 1 : 0.4)
-            .blur(radius: hovering || reduceMotion ? 0 : 4)
-            .animation(reduceMotion ? .linear(duration: 0.15) : (hovering ? Self.contentBloom : Self.settle), value: hovering)
+            .opacity(isActive ? 1 : 0)
+            .scaleEffect(isActive ? 1 : 0.4)
+            .blur(radius: isActive || reduceMotion ? 0 : 4)
+            .animation(reduceMotion ? .linear(duration: 0.15) : (isActive ? Self.contentBloom : Self.settle), value: isActive)
             // One frame, continuously morphed — never two views.
-            .frame(width: hovering ? 116 : 40, height: hovering ? 34 : 8)
+            .frame(width: isActive ? 116 : 40, height: isActive ? 34 : 8)
             .background(
                 Capsule()
-                    .fill(JotUI.Colors.onSurfaceVariant.opacity(hovering ? 0.04 : 0.18))
+                    .fill(JotUI.Colors.onSurfaceVariant.opacity(isActive ? 0.04 : 0.18))
             )
             .gtGlassCapsule()
-            .contentShape(Capsule().scale(hovering ? 1.2 : 2.4)) // generous hit + hover target
-            .animation(reduceMotion ? .linear(duration: 0.15) : (hovering ? Self.bloom : Self.settle), value: hovering)
+            .contentShape(Capsule().scale(isActive ? 1.2 : 2.4)) // generous hit + hover target
+            .animation(reduceMotion ? .linear(duration: 0.15) : (isActive ? Self.bloom : Self.settle), value: isActive)
         }
         .buttonStyle(.plain)
+        .focused($isFocused)
         .onHover { hovering = $0 }
         .help("Start hands-free dictation")
         .accessibilityLabel("Start hands-free dictation")

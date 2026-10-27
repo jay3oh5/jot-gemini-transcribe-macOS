@@ -72,15 +72,30 @@ final class ReplacementEngineTests: XCTestCase {
     }
     
     func testSnippetVariableSpacing() {
-        // "my calendly" should handle multiple spaces
+        // "my calendly" should handle multiple spaces in text or rule
         let out = ReplacementEngine.apply([snippet("my calendly", "URL")], to: "Here is my  calendly link")
         XCTAssertEqual(out, "Here is URL link")
+        
+        let out2 = ReplacementEngine.apply([snippet("my  calendly", "URL")], to: "Here is my calendly link")
+        XCTAssertEqual(out2, "Here is URL link")
     }
     
     func testSnippetSmartQuotes() {
-        // "my 'quote'" should handle smart quotes
+        // Straight quote in rule matches smart quote in text
         let out = ReplacementEngine.apply([snippet("my 'quote'", "URL")], to: "Here is my ’quote’ link")
         XCTAssertEqual(out, "Here is URL link")
+        
+        // Smart quote in rule matches straight quote in text
+        let out2 = ReplacementEngine.apply([snippet("let’s go", "URL")], to: "Here is let's go link")
+        XCTAssertEqual(out2, "Here is URL link")
+    }
+
+    func testSnippetSpecialRegexCharacters() {
+        let out = ReplacementEngine.apply([snippet("c++ project", "Swift")], to: "Working on a c++ project today")
+        XCTAssertEqual(out, "Working on a Swift today")
+
+        let out2 = ReplacementEngine.apply([snippet("$100 discount", "deal")], to: "Get the $100 discount now")
+        XCTAssertEqual(out2, "Get the deal now")
     }
     
     func testSnippetDoesNotPropagateCase() {

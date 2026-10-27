@@ -39,11 +39,11 @@ public enum ReplacementEngine {
             guard !rule.wrong.isEmpty else { continue }
             
             // Build the pattern with resilience for phrase-level substitutions
-            // 1. Escaped spaces become \s+ to handle variable spacing
-            // 2. Escaped quotes become ['’] to handle smart quotes from dictation
+            // 1. Literal spaces (single or consecutive) become \s+ to handle variable spacing
+            // 2. Straight or smart quotes become ['’] to handle dictation variants
             var basePattern = NSRegularExpression.escapedPattern(for: rule.wrong)
-            basePattern = basePattern.replacingOccurrences(of: "\\ ", with: "\\s+")
-            basePattern = basePattern.replacingOccurrences(of: "'", with: "['’]")
+            basePattern = basePattern.replacingOccurrences(of: " +", with: "\\\\s+", options: .regularExpression)
+            basePattern = basePattern.replacingOccurrences(of: "['’]", with: "['’]", options: .regularExpression)
             
             // Lookarounds instead of \b: word boundaries silently never match when
             // the wrong form starts/ends with punctuation ("e.g.", "c++") (audit L21).

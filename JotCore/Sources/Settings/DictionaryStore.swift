@@ -216,7 +216,8 @@ public struct DictionaryStore: Sendable {
             guard let rawTerm = columns.first else { continue }
             let term = rawTerm.trimmingCharacters(in: .whitespacesAndNewlines)
             
-            let misspelling = columns.count > 1 && !columns[1].isEmpty ? columns[1] : nil
+            let rawMisspelling = columns.count > 1 && !columns[1].isEmpty ? columns[1] : nil
+            let misspelling = rawMisspelling?.trimmingCharacters(in: .whitespacesAndNewlines)
             let isSnippet = columns.count > 2 && columns[2].lowercased() == "true"
             
             if !isSnippet {
@@ -224,8 +225,8 @@ public struct DictionaryStore: Sendable {
                 seen.insert(term.lowercased())
             } else {
                 guard !term.isEmpty else { continue }
-                let trigger = misspelling?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() ?? ""
-                guard !trigger.isEmpty, !current.contains(where: { ($0.misspelling?.lowercased() ?? "") == trigger && ($0.isSnippet == true) }) else { continue }
+                let trigger = misspelling?.lowercased() ?? ""
+                guard !trigger.isEmpty, !current.contains(where: { ($0.misspelling?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() ?? "") == trigger && ($0.isSnippet == true) }) else { continue }
             }
             
             current.append(DictionaryEntry(term: term, misspelling: misspelling, isSnippet: isSnippet ? true : nil))

@@ -131,8 +131,8 @@ struct DictionaryView: View {
                         .foregroundStyle(entry.starred ? JotUI.Colors.gYellow : JotUI.Colors.onSurfaceVariant.opacity(0.5))
                 }
                 .buttonStyle(.plain)
-                .help(entry.starred ? "Unstar word" : "Star word")
-                .accessibilityLabel(entry.starred ? "Unstar word" : "Star word")
+                .help(entry.starred ? (entry.isSnippet == true ? "Unstar snippet" : "Unstar word") : (entry.isSnippet == true ? "Star snippet" : "Star word"))
+                .accessibilityLabel(entry.starred ? (entry.isSnippet == true ? "Unstar snippet" : "Unstar word") : (entry.isSnippet == true ? "Star snippet" : "Star word"))
 
                 VStack(alignment: .leading, spacing: 2) {
                     if entry.isSnippet == true {
@@ -163,8 +163,8 @@ struct DictionaryView: View {
                         .foregroundStyle(JotUI.Colors.onSurfaceVariant)
                 }
                 .buttonStyle(.plain)
-                .help("Remove word")
-                .accessibilityLabel("Remove word")
+                .help(entry.isSnippet == true ? "Remove snippet" : "Remove word")
+                .accessibilityLabel(entry.isSnippet == true ? "Remove snippet" : "Remove word")
             }
             .padding(.vertical, 2)
         }
@@ -210,6 +210,7 @@ struct DictionaryView: View {
     // MARK: - Actions
 
     private func add() {
+        guard !addIsDisabled else { return }
         guard store.add(term: newTerm, misspelling: newMisspelling.isEmpty ? nil : newMisspelling, isSnippet: isSnippetMode) else {
             let trimmed = newTerm.trimmingCharacters(in: .whitespacesAndNewlines)
             if isSnippetMode {

@@ -64,16 +64,32 @@ public enum AXInserter {
             }
         }
 
-        // Never write into secure fields.
+        // Never write into secure fields or raw web areas.
         var roleRef: CFTypeRef?
         if AXUIElementCopyAttributeValue(element, kAXRoleAttribute as CFString, &roleRef) == .success,
-           let role = roleRef as? String, role == "AXSecureTextField" {
+           let role = roleRef as? String, role == "AXSecureTextField" || role == "AXWebArea" {
             return .notPossible
         }
 
         // Readable value is the precondition for verification; without it we cannot
         // prove the insert landed, so we fall to paste rather than risk a double.
         guard let before = stringValue(of: element) else { return .notPossible }
+
+        var hadSelection = false
+        var selectedRangeRef: CFTypeRef?
+        if AXUIElementCopyAttributeValue(element, kAXSelectedTextRangeAttribute as CFString, &selectedRangeRef) == .success,
+           let rangeVal = selectedRangeRef {
+            var range = CFRange(location: 0, length: 0)
+            if AXValueGetValue(rangeVal as! AXValue, .cfRange, &range) {
+                hadSelection = range.length > 0
+            }
+        } else {
+            var selTextRef: CFTypeRef?
+            if AXUIElementCopyAttributeValue(element, kAXSelectedTextAttribute as CFString, &selTextRef) == .success,
+               let selStr = selTextRef as? String {
+                hadSelection = !selStr.isEmpty
+            }
+        }
 
         var settable = DarwinBoolean(false)
         AXUIElementIsAttributeSettable(element, kAXSelectedTextAttribute as CFString, &settable)
@@ -95,6 +111,16 @@ public enum AXInserter {
                 after = stringValue(of: element)
                 landed = after != nil && after != before
                 if landed { break }
+            }
+        }
+        if landed, !hadSelection, !before.isEmpty {
+            // A non-selection insert must never completely erase and replace the
+            // existing content (destructive clobber seen in web content / Gecko).
+            let trimmedAfter = after?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            let trimmedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            if trimmedAfter == trimmedText && !trimmedText.isEmpty {
+                Log.insertion.warning("AXInserter: target replaced entire field despite zero-length selection — falling to paste")
+                return .notPossible
             }
         }
         if !landed {

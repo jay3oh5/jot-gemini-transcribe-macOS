@@ -16,9 +16,12 @@ import Foundation
 
 /// Per-app insertion behavior. Seeded from research; grows via the Insertion Lab.
 public enum AppQuirks {
-    /// Terminals and terminal-like apps: no editable AX text element — go straight
-    /// to paste (Terminal/iTerm2 handle bracketed paste well).
+    /// Terminals, browsers, and web-heavy apps: no editable AX text element or
+    /// unreliable AX text replacement (web rich-text editors like ProseMirror,
+    /// Slate, Monaco, Google Docs often misbehave or replace entire content on
+    /// AX set) — go straight to paste (universal ⌘V).
     public static let forcePaste: Set<String> = [
+        // Terminals and terminal-like apps
         "com.apple.Terminal",
         "com.googlecode.iterm2",
         "dev.warp.Warp-Stable",
@@ -30,6 +33,40 @@ public enum AppQuirks {
         "com.sublimetext.4",
         "com.jetbrains.intellij",
         "org.vim.MacVim",
+
+        // Web browsers: contenteditable/rich-text inputs (Claude.ai, ChatGPT, Google Docs)
+        // do not handle direct AX text replacement reliably. Specifically, Gecko
+        // (Firefox/Zen) wipes out the entire container upon kAXSelectedTextAttribute set.
+        "app.zen-browser.zen",
+        "org.mozilla.firefox",
+        "org.mozilla.firefoxdeveloperedition",
+        "org.mozilla.nightly",
+        "io.gitlab.librewolf-community.librewolf",
+        "net.waterfox.waterfox",
+        "jp.co.ablaze.floorp",
+        "org.torproject.torbrowser",
+        "com.google.Chrome",
+        "com.google.Chrome.canary",
+        "com.google.Chrome.beta",
+        "com.google.Chrome.dev",
+        "com.apple.Safari",
+        "com.apple.SafariTechnologyPreview",
+        "company.thebrowser.Browser", // Arc
+        "com.brave.Browser",
+        "com.brave.Browser.nightly",
+        "com.brave.Browser.beta",
+        "com.microsoft.edgemac",
+        "com.microsoft.edgemac.Canary",
+        "com.microsoft.edgemac.Dev",
+        "com.microsoft.edgemac.Beta",
+        "com.vivaldi.Vivaldi",
+        "com.operasoftware.Opera",
+        "com.operasoftware.OperaGX",
+        "com.kagi.kagimacOS", // Orion
+
+        // Web wrapper desktop apps with rich web editors
+        "com.anthropic.claudefordesktop",
+        "com.openai.chat",
     ]
 
     /// Chromium/Electron apps: the accessibility tree must be woken with

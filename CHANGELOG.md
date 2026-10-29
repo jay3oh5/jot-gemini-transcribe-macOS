@@ -5,7 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.6.0] - 2026-10-27
+## [0.6.0] - 2026-10-29
+
+### Added
+- **Dedicated Microphone Selection:**
+  - Added dedicated microphone input dropdown in Settings > Dictation with device selection and automatic input restoration across sessions.
+
+### Fixed
+- **Web Browser Text Insertion & Destructive Replacement Guard:**
+  - Added automatic fallback to clipboard paste for all major web browsers (Chrome, Safari, Firefox, Zen, Arc, Brave, Edge, Orion) and desktop web wrapper applications (Claude, ChatGPT) to prevent destructive AX replacements in rich-text and contenteditable areas.
+  - Added proactive check in `AXInserter` to detect and reject full container clobbering when inserting with an unselected cursor.
+- **Accessibility Auto-Prompt for Returning Users:**
+  - Auto-prompts and polls accessibility permissions if access was revoked or reset across app updates.
 
 ### Changed
 - **Rebranded to Sayo:**

@@ -32,12 +32,12 @@ final class WarmEnginePool {
     private var prewarmTask: Task<Void, Never>?
     private var refreshTask: Task<Void, Never>?
 
-    /// The engine for a session that is starting right now. Immediately begins
-    /// building the next spare so back-to-back dictations stay warm.
+    /// The engine for a session that is starting right now.
     func take() -> AudioCaptureEngine {
         refreshTask?.cancel()
         refreshTask = nil
-        defer { prewarmNext() }
+        prewarmTask?.cancel()
+        prewarmTask = nil
         if let spare {
             self.spare = nil
             return spare
@@ -68,7 +68,7 @@ final class WarmEnginePool {
                     return
                 }
                 self.prewarmTask = nil
-                if self.spare == nil {
+                if self.spare == nil, engine.prewarmed {
                     self.spare = engine
                 } else {
                     engine.cancel()
@@ -89,10 +89,10 @@ final class WarmEnginePool {
         oldSpare?.cancel()
 
         // Debounce: hardware route changes often fire multiple notifications in
-        // rapid succession. Delay 500ms so CoreAudio has settled before building
+        // rapid succession. Delay 800ms so CoreAudio has settled before building
         // the new warm engine.
         refreshTask = Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 500_000_000)
+            try? await Task.sleep(nanoseconds: 800_000_000)
             guard !Task.isCancelled else { return }
             self.refreshTask = nil
             self.prewarmNext()

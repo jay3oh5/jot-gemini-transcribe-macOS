@@ -754,6 +754,7 @@ final class DictationController {
             restoreMicrophoneAfterDictationIfNeeded()
             clearSlowTimer()
             onStatusItemState?(.idle)
+            warmEngines.prewarmNext()
             // The text has ALREADY landed at the cursor by now — insertion is not
             // waiting on anything here. What waits is the pill: a correction that
             // just fired needs its sweep to finish, and jumping straight to the
@@ -775,6 +776,7 @@ final class DictationController {
             clearSlowTimer()
             stopElapsedTimer()
             onStatusItemState?(.idle)
+            warmEngines.prewarmNext()
             // Short accidental taps stay silent; deliberate cancels get the soft damp.
             if let startedAt = sessionStartedAt, Date().timeIntervalSince(startedAt) > 0.5 {
                 earcons.play(.cancel)
@@ -785,6 +787,7 @@ final class DictationController {
             restoreMicrophoneAfterDictationIfNeeded()
             clearSlowTimer()
             stopElapsedTimer()
+            warmEngines.prewarmNext()
             earcons.play(.error)
             // Key/permission problems persist beyond the toast — the menu bar
             // icon carries the attention state until resolved (audit L12).

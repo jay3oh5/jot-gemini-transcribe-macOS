@@ -27,8 +27,14 @@ let package = Package(
     ],
     targets: [
         .target(
+            name: "JotCoreObjC",
+            path: "SourcesObjC",
+            publicHeadersPath: "include"
+        ),
+        .target(
             name: "JotCore",
             dependencies: [
+                "JotCoreObjC",
                 .product(name: "GRDB", package: "GRDB.swift"),
                 "Sauce",
             ],

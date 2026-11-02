@@ -16,6 +16,7 @@ import AVFoundation
 import Accelerate
 import CoreAudio
 import Foundation
+import JotCoreObjC
 
 /// The crash-safe recorder.
 ///
@@ -49,6 +50,7 @@ public final class AudioCaptureEngine: AudioCapturing {
     /// words are lost, so it must never happen on the critical path.
     private var prewarmedDevice: AudioDeviceID?
     private var isPrewarmed = false
+    public var prewarmed: Bool { isPrewarmed }
     private var hasTap = false
     /// Parked while stop() waits for the HAL's in-flight buffer to land.
     private var tailWaiter: CheckedContinuation<Void, Never>?
@@ -302,11 +304,22 @@ public final class AudioCaptureEngine: AudioCapturing {
         self.engine = engine
         let input = engine.inputNode
 
-        // Tap at the hardware format; conversion to 16k mono happens on our queue.
+        // Check both input and output formats of the input node.
+        // During hardware route switches or aggregate device reconfigurations,
+        // AUHAL's underlying input format can have sampleRate == 0 or channelCount == 0.
+        let inFormat = input.inputFormat(forBus: 0)
         let hwFormat = input.outputFormat(forBus: 0)
-        guard hwFormat.sampleRate > 0, hwFormat.channelCount > 0 else {
+        guard inFormat.sampleRate > 0, inFormat.channelCount > 0,
+              hwFormat.sampleRate > 0, hwFormat.channelCount > 0 else {
             throw CaptureError.noInputDevice
         }
+
+        if let devID = sessionDevice ?? AudioDeviceQuery.defaultInputDevice() {
+            guard AudioDeviceQuery.isDeviceReady(devID) else {
+                throw CaptureError.noInputDevice
+            }
+        }
+
         let converter = AVAudioConverter(from: hwFormat, to: targetFormat)
         guard let converter else { throw CaptureError.converterUnavailable }
         self.converter = converter
@@ -324,12 +337,27 @@ public final class AudioCaptureEngine: AudioCapturing {
         // really arrive at ~10Hz, not the ~47Hz this comment used to claim
         // (docs/design/latency-audit-2026-08-19.md:53). Every threshold that
         // watches this stream has ~100ms of resolution, no more.
-        input.installTap(onBus: 0, bufferSize: 1024, format: hwFormat) { [weak self] buffer, _ in
-            self?.ingest(buffer, hwRate: hwFormat.sampleRate)
+        do {
+            try ObjCException.execute {
+                input.installTap(onBus: 0, bufferSize: 1024, format: hwFormat) { [weak self] buffer, _ in
+                    self?.ingest(buffer, hwRate: hwFormat.sampleRate)
+                }
+            }
+            hasTap = true
+        } catch {
+            Log.audio.error("AudioCaptureEngine: failed to install tap: \(error.localizedDescription, privacy: .public)")
+            throw CaptureError.engineStart("Tap installation failed: \(error.localizedDescription)")
         }
-        hasTap = true
 
-        engine.prepare()
+        do {
+            try ObjCException.execute {
+                engine.prepare()
+            }
+        } catch {
+            Log.audio.error("AudioCaptureEngine: engine prepare failed: \(error.localizedDescription, privacy: .public)")
+            throw CaptureError.engineStart("Engine prepare failed: \(error.localizedDescription)")
+        }
+
         guard shouldStart else {
             Log.audio.info("AudioCaptureEngine: graph prepared in \(ms(t0), format: .fixed(precision: 1))ms (\(reason, privacy: .public), not started)")
             return
@@ -367,7 +395,9 @@ public final class AudioCaptureEngine: AudioCapturing {
         }
         if let engine {
             if hasTap {
-                engine.inputNode.removeTap(onBus: 0)
+                _ = try? ObjCException.execute {
+                    engine.inputNode.removeTap(onBus: 0)
+                }
                 hasTap = false
             }
             if engine.isRunning {
@@ -652,6 +682,33 @@ enum AudioDeviceQuery {
             AudioObjectID(kAudioObjectSystemObject), &address, 0, nil, &size, &deviceID
         )
         return (status == noErr && deviceID != 0) ? deviceID : nil
+    }
+
+    /// Verifies whether the specified device is ready for capture (has active input streams
+    /// and a valid hardware sample rate/channel count). Returns false while CoreAudio is
+    /// rebuilding aggregate devices or switching routes.
+    static func isDeviceReady(_ deviceID: AudioDeviceID) -> Bool {
+        var streamAddress = AudioObjectPropertyAddress(
+            mSelector: kAudioDevicePropertyStreams,
+            mScope: kAudioDevicePropertyScopeInput,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        var streamSize: UInt32 = 0
+        guard AudioObjectGetPropertyDataSize(deviceID, &streamAddress, 0, nil, &streamSize) == noErr,
+              streamSize > 0 else {
+            return false
+        }
+        var formatAddress = AudioObjectPropertyAddress(
+            mSelector: kAudioDevicePropertyStreamFormat,
+            mScope: kAudioDevicePropertyScopeInput,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        var format = AudioStreamBasicDescription()
+        var formatSize = UInt32(MemoryLayout<AudioStreamBasicDescription>.size)
+        guard AudioObjectGetPropertyData(deviceID, &formatAddress, 0, nil, &formatSize, &format) == noErr else {
+            return false
+        }
+        return format.mSampleRate > 0 && format.mChannelsPerFrame > 0
     }
 
     /// How the default input is attached — built-in, Bluetooth, USB, aggregate.

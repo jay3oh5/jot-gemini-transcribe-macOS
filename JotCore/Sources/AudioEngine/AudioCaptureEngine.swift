@@ -49,6 +49,7 @@ public final class AudioCaptureEngine: AudioCapturing {
     /// words are lost, so it must never happen on the critical path.
     private var prewarmedDevice: AudioDeviceID?
     private var isPrewarmed = false
+    public var prewarmed: Bool { isPrewarmed }
     private var hasTap = false
     /// Parked while stop() waits for the HAL's in-flight buffer to land.
     private var tailWaiter: CheckedContinuation<Void, Never>?

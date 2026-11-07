@@ -33,6 +33,27 @@ public extension Notification.Name {
 /// Endpoint + model IDs are overridable because preview models get renamed.
 public struct SettingsStore: Sendable {
     private static let defaults = UserDefaults.standard
+    private static let gateTripWindow: TimeInterval = 86_400
+
+    private enum Key {
+        static let hasCompletedOnboarding = "hasCompletedOnboarding"
+        static let endpointOverride = "endpointOverride"
+        static let transcribeModelOverride = "transcribeModelOverride"
+        static let cleanupModelOverride = "cleanupModelOverride"
+        static let doubleTapLock = "doubleTapLock"
+        static let showIdleIndicator = "showIdleIndicator"
+        static let soundsEnabled = "soundsEnabled"
+        static let hotkeyKey = "hotkeyKey"
+        static let preferredInputDeviceUID = "preferredInputDeviceUID"
+        static let restoreMicAfterDictation = "restoreMicAfterDictation"
+        static let smartTranscription = "smartTranscription"
+        static let smartCleanupPass = "smartCleanupPass"
+        static let gateTrips = "gateTrips"
+        static let legacyTranscribeEndpoint = "legacyTranscribeEndpoint"
+        static let experimentalNoiseHandling = "experimentalNoiseHandling"
+        static let liveTranscription = "liveTranscription"
+        static let audioRetentionDays = "audioRetentionDays"
+    }
 
     public init() {}
 
@@ -66,22 +87,22 @@ public struct SettingsStore: Sendable {
     /// True once the user finished onboarding — a deliberate "I'll add it later"
     /// must not re-trap them in the wizard every launch.
     public var hasCompletedOnboarding: Bool {
-        Self.defaults.bool(forKey: "hasCompletedOnboarding")
+        Self.defaults.bool(forKey: Key.hasCompletedOnboarding)
     }
 
     public func setHasCompletedOnboarding(_ done: Bool) {
-        Self.set(done, forKey: "hasCompletedOnboarding")
+        Self.set(done, forKey: Key.hasCompletedOnboarding)
     }
 
     public var geminiConfig: GeminiConfig {
         var config = GeminiConfig()
-        if let url = Self.usableEndpointURL(Self.defaults.string(forKey: "endpointOverride")) {
+        if let url = Self.usableEndpointURL(Self.defaults.string(forKey: Key.endpointOverride)) {
             config.endpoint = url
         }
-        if let model = Self.defaults.string(forKey: "transcribeModelOverride"), !model.isEmpty {
+        if let model = Self.defaults.string(forKey: Key.transcribeModelOverride), !model.isEmpty {
             config.transcribeModel = model
         }
-        if let model = Self.defaults.string(forKey: "cleanupModelOverride"), !model.isEmpty {
+        if let model = Self.defaults.string(forKey: Key.cleanupModelOverride), !model.isEmpty {
             config.cleanupModel = model
         }
         return config
@@ -91,52 +112,52 @@ public struct SettingsStore: Sendable {
     /// routinely exceed the hold threshold, misreading tap-tap as hold→finalize
     /// (dogfood). The timing-free gesture is Space-while-holding.
     public var doubleTapLockEnabled: Bool {
-        Self.defaults.object(forKey: "doubleTapLock") as? Bool ?? false
+        Self.defaults.object(forKey: Key.doubleTapLock) as? Bool ?? false
     }
 
     public func setDoubleTapLock(_ enabled: Bool) {
-        Self.set(enabled, forKey: "doubleTapLock")
+        Self.set(enabled, forKey: Key.doubleTapLock)
     }
 
     /// Show the resting dot at the bottom of the screen when idle. Off = the pill
     /// only appears while dictating.
     public var showIdleIndicator: Bool {
-        Self.defaults.object(forKey: "showIdleIndicator") as? Bool ?? true
+        Self.defaults.object(forKey: Key.showIdleIndicator) as? Bool ?? true
     }
 
     public func setShowIdleIndicator(_ show: Bool) {
-        Self.set(show, forKey: "showIdleIndicator")
+        Self.set(show, forKey: Key.showIdleIndicator)
     }
 
     public var soundsEnabled: Bool {
-        Self.defaults.object(forKey: "soundsEnabled") as? Bool ?? true
+        Self.defaults.object(forKey: Key.soundsEnabled) as? Bool ?? true
     }
 
     public func setSoundsEnabled(_ enabled: Bool) {
-        Self.set(enabled, forKey: "soundsEnabled")
+        Self.set(enabled, forKey: Key.soundsEnabled)
     }
 
     public var hotkeyKey: HotkeyKey {
-        (Self.defaults.string(forKey: "hotkeyKey")).flatMap(HotkeyKey.init(rawValue:)) ?? .fn
+        (Self.defaults.string(forKey: Key.hotkeyKey)).flatMap(HotkeyKey.init(rawValue:)) ?? .fn
     }
 
     /// Persistent UID of the preferred microphone, or nil for "System Default".
     public var preferredInputDeviceUID: String? {
-        Self.defaults.string(forKey: "preferredInputDeviceUID")
+        Self.defaults.string(forKey: Key.preferredInputDeviceUID)
     }
 
     public func setPreferredInputDeviceUID(_ uid: String?) {
-        Self.set(uid, forKey: "preferredInputDeviceUID")
+        Self.set(uid, forKey: Key.preferredInputDeviceUID)
     }
 
     /// Whether to restore the previous macOS input device after dictation ends
     /// if Jot had temporarily switched to the preferred microphone.
     public var restoreMicAfterDictation: Bool {
-        Self.defaults.object(forKey: "restoreMicAfterDictation") as? Bool ?? true
+        Self.defaults.object(forKey: Key.restoreMicAfterDictation) as? Bool ?? true
     }
 
     public func setRestoreMicAfterDictation(_ restore: Bool) {
-        Self.set(restore, forKey: "restoreMicAfterDictation")
+        Self.set(restore, forKey: Key.restoreMicAfterDictation)
     }
 
     // MARK: - Formatting policy
@@ -163,25 +184,25 @@ public struct SettingsStore: Sendable {
 
     public var formattingPolicy: FormattingPolicy {
         FormattingPolicy(
-            nativeSmart: Self.defaults.object(forKey: "smartTranscription") as? Bool ?? true,
-            cleanupPass: Self.defaults.object(forKey: "smartCleanupPass") as? Bool ?? false
+            nativeSmart: Self.defaults.object(forKey: Key.smartTranscription) as? Bool ?? true,
+            cleanupPass: Self.defaults.object(forKey: Key.smartCleanupPass) as? Bool ?? false
         )
     }
 
     /// Native `mode: "smart"` — the default transcription path.
     public var smartTranscriptionEnabled: Bool {
-        Self.defaults.object(forKey: "smartTranscription") as? Bool ?? true
+        Self.defaults.object(forKey: Key.smartTranscription) as? Bool ?? true
     }
 
     public func setSmartTranscription(_ enabled: Bool) {
-        Self.set(enabled, forKey: "smartTranscription")
+        Self.set(enabled, forKey: Key.smartTranscription)
     }
 
     /// The opt-in second pass through the cleanup model — this is what carries
     /// per-app tone. Off by default: it costs a round trip and sends the
     /// transcript text a second time.
     public var smartCleanupPassEnabled: Bool {
-        Self.defaults.object(forKey: "smartCleanupPass") as? Bool ?? false
+        Self.defaults.object(forKey: Key.smartCleanupPass) as? Bool ?? false
     }
 
     public func setSmartCleanupPass(_ enabled: Bool) {
@@ -190,9 +211,9 @@ public struct SettingsStore: Sendable {
             // gate counter: auto-degrade now switches THIS flag off, so leaving
             // the clear on setSmartFormatting would resurrect the bug where one
             // stale trip inside the old 24h window instantly re-degrades.
-            Self.defaults.removeObject(forKey: "gateTrips")
+            Self.defaults.removeObject(forKey: Key.gateTrips)
         }
-        Self.set(enabled, forKey: "smartCleanupPass")
+        Self.set(enabled, forKey: Key.smartCleanupPass)
     }
 
     /// Escape hatch back to the pre-native-smart transport.
@@ -204,15 +225,15 @@ public struct SettingsStore: Sendable {
     /// there), so this necessarily means verbatim + the optional tone pass.
     /// Remove once native smart has a clean dogfood run.
     public var usesLegacyTranscribeEndpoint: Bool {
-        Self.defaults.bool(forKey: "legacyTranscribeEndpoint")
+        Self.defaults.bool(forKey: Key.legacyTranscribeEndpoint)
     }
 
     public func setLegacyTranscribeEndpoint(_ enabled: Bool) {
-        Self.set(enabled, forKey: "legacyTranscribeEndpoint")
+        Self.set(enabled, forKey: Key.legacyTranscribeEndpoint)
     }
 
     public func setHotkeyKey(_ key: HotkeyKey) {
-        Self.set(key.rawValue, forKey: "hotkeyKey")
+        Self.set(key.rawValue, forKey: Key.hotkeyKey)
     }
 
     /// Experimental: judge speech RELATIVE to the room instead of against fixed
@@ -224,11 +245,11 @@ public struct SettingsStore: Sendable {
     /// numbers are in. The measurements it would act on are recorded either way —
     /// `NoiseFloorEstimator` runs unconditionally.
     public var experimentalNoiseHandling: Bool {
-        Self.defaults.bool(forKey: "experimentalNoiseHandling")
+        Self.defaults.bool(forKey: Key.experimentalNoiseHandling)
     }
 
     public func setExperimentalNoiseHandling(_ enabled: Bool) {
-        Self.set(enabled, forKey: "experimentalNoiseHandling")
+        Self.set(enabled, forKey: Key.experimentalNoiseHandling)
     }
 
     /// Stream audio to the Live API over a WebSocket and show words as they are
@@ -243,11 +264,11 @@ public struct SettingsStore: Sendable {
     /// and a live stream that ends any way other than cleanly is discarded in
     /// favour of the batch upload over that file.
     public var liveTranscription: Bool {
-        Self.defaults.bool(forKey: "liveTranscription")
+        Self.defaults.bool(forKey: Key.liveTranscription)
     }
 
     public func setLiveTranscription(_ enabled: Bool) {
-        Self.set(enabled, forKey: "liveTranscription")
+        Self.set(enabled, forKey: Key.liveTranscription)
     }
 
     /// Live needs the interactions-era transport; the legacy escape hatch is a
@@ -259,37 +280,37 @@ public struct SettingsStore: Sendable {
 
     // Raw override values for the Settings UI — panes must not duplicate the
     // defaults keys (a rename would silently desync display from effect).
-    public var endpointOverride: String? { Self.defaults.string(forKey: "endpointOverride") }
-    public var transcribeModelOverride: String? { Self.defaults.string(forKey: "transcribeModelOverride") }
-    public var cleanupModelOverride: String? { Self.defaults.string(forKey: "cleanupModelOverride") }
+    public var endpointOverride: String? { Self.defaults.string(forKey: Key.endpointOverride) }
+    public var transcribeModelOverride: String? { Self.defaults.string(forKey: Key.transcribeModelOverride) }
+    public var cleanupModelOverride: String? { Self.defaults.string(forKey: Key.cleanupModelOverride) }
 
     public func setEndpointOverride(_ raw: String?) {
-        Self.set(raw, forKey: "endpointOverride")
+        Self.set(raw, forKey: Key.endpointOverride)
     }
 
     public func setTranscribeModelOverride(_ raw: String?) {
-        Self.set(raw, forKey: "transcribeModelOverride")
+        Self.set(raw, forKey: Key.transcribeModelOverride)
     }
 
     public func setCleanupModelOverride(_ raw: String?) {
-        Self.set(raw, forKey: "cleanupModelOverride")
+        Self.set(raw, forKey: Key.cleanupModelOverride)
     }
 
     /// Days to keep audio files (transcripts are kept until deleted). 0 = forever.
     public var audioRetentionDays: Int {
-        Self.defaults.object(forKey: "audioRetentionDays") as? Int ?? 7
+        Self.defaults.object(forKey: Key.audioRetentionDays) as? Int ?? 7
     }
 
     public func setAudioRetentionDays(_ days: Int) {
-        Self.set(days, forKey: "audioRetentionDays")
+        Self.set(days, forKey: Key.audioRetentionDays)
     }
 
     /// Auto-degrade bookkeeping (F11): ≥3 gate trips in 24h ⇒ verbatim by default.
     public func recordGateTrip(now: Date = Date()) -> Int {
-        var trips = (Self.defaults.array(forKey: "gateTrips") as? [Date]) ?? []
-        trips = trips.filter { now.timeIntervalSince($0) < 86_400 }
+        var trips = (Self.defaults.array(forKey: Key.gateTrips) as? [Date]) ?? []
+        trips = trips.filter { now.timeIntervalSince($0) < Self.gateTripWindow }
         trips.append(now)
-        Self.defaults.set(trips, forKey: "gateTrips")
+        Self.defaults.set(trips, forKey: Key.gateTrips)
         return trips.count
     }
 }

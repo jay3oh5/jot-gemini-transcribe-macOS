@@ -15,6 +15,7 @@
 import AppKit
 import ApplicationServices
 import AVFoundation
+import ServiceManagement
 import SwiftUI
 import JotCore
 
@@ -1146,5 +1147,3 @@ private struct ConfettiBurst: View {
         }
     }
 }
-
-import ServiceManagement

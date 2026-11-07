@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Builds a signed, notarized, stapled Jot.app and packages it as a DMG.
+# Builds a signed, notarized, stapled Sayo.app and packages it as a DMG.
 #
 #   scripts/release.sh
 #
@@ -32,7 +32,7 @@ cd "$(dirname "$0")/.."
 
 VERSION=$(grep -m1 'MARKETING_VERSION' project.yml | awk '{print $2}' | tr -d '"')
 BUILD_DIR="build/release"
-APP_NAME="Jot"
+APP_NAME="Sayo"
 NOTARY_PROFILE="${JOT_NOTARY_PROFILE:-jot-notary}"
 
 echo "▸ Generating project"
@@ -46,10 +46,10 @@ echo "▸ Archiving Release"
 rm -rf "$BUILD_DIR"
 env GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=safe.bareRepository GIT_CONFIG_VALUE_0=all \
   xcodebuild archive \
-    -project Jot.xcodeproj \
-    -scheme Jot \
+    -project Sayo.xcodeproj \
+    -scheme Sayo \
     -configuration Release \
-    -archivePath "$BUILD_DIR/Jot.xcarchive" \
+    -archivePath "$BUILD_DIR/Sayo.xcarchive" \
     -destination 'platform=macOS' \
     ENABLE_HARDENED_RUNTIME=YES \
     -allowProvisioningUpdates \
@@ -69,7 +69,7 @@ cat > "$BUILD_DIR/ExportOptions.plist" <<PLIST
 PLIST
 env GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=safe.bareRepository GIT_CONFIG_VALUE_0=all \
   xcodebuild -exportArchive \
-    -archivePath "$BUILD_DIR/Jot.xcarchive" \
+    -archivePath "$BUILD_DIR/Sayo.xcarchive" \
     -exportPath "$BUILD_DIR/export" \
     -exportOptionsPlist "$BUILD_DIR/ExportOptions.plist" \
     -allowProvisioningUpdates
@@ -110,8 +110,8 @@ else
 fi
 
 echo "▸ Building DMG"
-scripts/make-dmg.sh "$APP_PATH" "$BUILD_DIR/Jot-$VERSION$SUFFIX.dmg"
-DMG="$BUILD_DIR/Jot-$VERSION$SUFFIX.dmg"
+scripts/make-dmg.sh "$APP_PATH" "$BUILD_DIR/Sayo-$VERSION$SUFFIX.dmg"
+DMG="$BUILD_DIR/Sayo-$VERSION$SUFFIX.dmg"
 
 if [ -z "$SUFFIX" ]; then
   # The CONTAINER needs its own signature. A notarization ticket alone is not

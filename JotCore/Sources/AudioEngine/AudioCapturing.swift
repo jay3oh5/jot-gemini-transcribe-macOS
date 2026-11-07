@@ -88,11 +88,16 @@ public protocol AudioCapturing: AnyObject {
     /// Tears down the capture graph immediately without waiting for tail audio.
     /// Used to cleanly discard prewarmed or cancelled capture graphs.
     func cancel()
+    /// Whether the engine currently has a prepared, unstarted capture graph.
+    var prewarmed: Bool { get }
 }
 
 extension AudioCapturing {
     /// Default no-op implementation of cancel for test doubles.
     public func cancel() {}
+
+    /// Default implementation for test doubles that do not prewarm.
+    public var prewarmed: Bool { false }
 
     /// For the callers that only ever want a file — onboarding's mic check and
     /// every non-live dictation. Implementers still have to handle the sink.

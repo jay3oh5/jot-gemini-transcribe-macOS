@@ -225,8 +225,19 @@ final class DictationController {
         AudioInputDevices.startMonitoringDefaultChanges()
         NotificationCenter.default.addObserver(forName: .jotDefaultInputChanged, object: nil, queue: .main) { [weak self] _ in
             Task { @MainActor in
+                guard let self else { return }
+                let settings = SettingsStore()
+                if let preferredUID = settings.preferredInputDeviceUID,
+                   !preferredUID.isEmpty,
+                   let currentUID = AudioInputDevices.currentDefaultUID(),
+                   currentUID != preferredUID,
+                   AudioInputDevices.device(forUID: preferredUID) != nil {
+                    Log.audio.info("default input changed to \(currentUID, privacy: .public) — re-asserting preferred mic \(preferredUID, privacy: .public)")
+                    AudioInputDevices.setDefault(uid: preferredUID)
+                    return
+                }
                 Log.audio.info("default input changed — refreshing the warm capture graph")
-                self?.warmEngines.refresh()
+                self.warmEngines.refresh()
             }
         }
 
@@ -313,6 +324,17 @@ final class DictationController {
         if engine.start() {
             engineActive = true
             stopAccessibilityMonitoring()
+
+            let settings = SettingsStore()
+            if let preferredUID = settings.preferredInputDeviceUID,
+               !preferredUID.isEmpty,
+               let currentUID = AudioInputDevices.currentDefaultUID(),
+               currentUID != preferredUID,
+               AudioInputDevices.device(forUID: preferredUID) != nil {
+                Log.audio.info("activateEngine: enforcing preferred mic \(preferredUID, privacy: .public)")
+                AudioInputDevices.setDefault(uid: preferredUID)
+            }
+
             if KeychainStore.loadAPIKey() == nil {
                 // New-user path: dictation can't work yet — say exactly where to go.
                 onStatusChange?("Add your Gemini API key in Settings → Advanced")

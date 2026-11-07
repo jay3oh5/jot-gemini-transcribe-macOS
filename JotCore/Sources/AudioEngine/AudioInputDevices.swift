@@ -147,6 +147,39 @@ public enum AudioInputDevices {
         return cfUID as String
     }
 
+    /// Queries the transport type of an audio device (e.g. Built-in, Bluetooth, USB).
+    public static func transportType(of id: AudioDeviceID) -> UInt32? {
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioDevicePropertyTransportType,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        var transport: UInt32 = 0
+        var size = UInt32(MemoryLayout<UInt32>.size)
+        guard AudioObjectGetPropertyData(id, &address, 0, nil, &size, &transport) == noErr else {
+            return nil
+        }
+        return transport
+    }
+
+    /// Whether the device is attached via Bluetooth (classic or LE).
+    public static func isBluetooth(id: AudioDeviceID) -> Bool {
+        guard let transport = transportType(of: id) else { return false }
+        return transport == kAudioDeviceTransportTypeBluetooth || transport == kAudioDeviceTransportTypeBluetoothLE
+    }
+
+    /// Whether the device with the given persistent CoreAudio UID is Bluetooth.
+    public static func isBluetooth(uid: String) -> Bool {
+        guard let id = id(for: uid) else { return false }
+        return isBluetooth(id: id)
+    }
+
+    /// Whether the current system default input device is Bluetooth.
+    public static func isCurrentDefaultBluetooth() -> Bool {
+        guard let id = currentDefaultID() else { return false }
+        return isBluetooth(id: id)
+    }
+
     private static func hasInputStreams(_ id: AudioDeviceID) -> Bool {
         var address = AudioObjectPropertyAddress(
             mSelector: kAudioDevicePropertyStreams,

@@ -135,7 +135,9 @@ public struct LiveStats: @unchecked Sendable {
         if lowered.contains("setup") || lowered.contains("connect") || lowered.contains("refused") {
             return .neverOpened
         }
-        if lowered.contains("no final") || lowered.contains("empty") { return .noFinal }
+        if lowered.contains("no final") || lowered.contains("empty") || lowered.contains("activityend") || lowered.contains("flush") {
+            return .noFinal
+        }
         return .droppedMidSession
     }
 }

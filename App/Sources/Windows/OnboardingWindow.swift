@@ -416,7 +416,7 @@ private struct APIKeyScreen: View {
                             .foregroundStyle(JotUI.Colors.error)
                     }
                     if noModelAccess {
-                        Text("That key works, but it can't reach Jot's transcription model yet. Setup continues — ask for access, then try a dictation.")
+                        Text("That key works, but it can't reach Sayo's transcription model yet. Setup continues — ask for access, then try a dictation.")
                             .font(JotUI.TypeScale.labelSmall())
                             .foregroundStyle(JotUI.Colors.error)
                             .multilineTextAlignment(.center)
@@ -683,7 +683,7 @@ private struct MicScreen: View {
         guard !heard else { return nil }
         let name = currentInputName ?? "this input"
         if deadDevice {
-            return ("No sound is reaching Jot from \(name). Pick a different input below.", true)
+            return ("No sound is reaching Sayo from \(name). Pick a different input below.", true)
         }
         if maxLevel >= 0.06 {
             // Something is definitely arriving — say so, even before it is loud
@@ -751,7 +751,7 @@ private struct AccessibilityScreen: View {
     @State private var slowGrant = false
 
     var body: some View {
-        ScreenScaffold("Let it type for you.", "macOS needs your OK before Jot can place text at your cursor.") {
+        ScreenScaffold("Let it type for you.", "macOS needs your OK before Sayo can place text at your cursor.") {
             VStack(spacing: JotUI.Spacing.m) {
                 PermissionCard(icon: "keyboard", title: "Accessibility", granted: granted) {
                     let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
@@ -823,7 +823,7 @@ private struct GlobeKeyScreen: View {
                 }
 
                 if FnUsageAdvisor.karabinerIsPresent() {
-                    Text("Karabiner-Elements is running — if fn doesn't respond, add Jot to its exclusions.")
+                    Text("Karabiner-Elements is running — if fn doesn't respond, add Sayo to its exclusions.")
                         .font(JotUI.TypeScale.labelSmall())
                         .foregroundStyle(JotUI.Colors.onSurfaceVariant)
                         .multilineTextAlignment(.center)
@@ -852,7 +852,7 @@ private struct HowToScreen: View {
     private let keyName = SettingsStore().hotkeyKey.displayName
 
     var body: some View {
-        ScreenScaffold("Talk to Jot.", "Three gestures — that's the whole product.") {
+        ScreenScaffold("Talk to Sayo.", "Three gestures — that's the whole product.") {
             VStack(spacing: JotUI.Spacing.m) {
                 VStack(alignment: .leading, spacing: JotUI.Spacing.s) {
                     gestureRow(keys: [keyName], title: "Hold and talk",

@@ -48,7 +48,17 @@ final class AudioInputDevicesTests: XCTestCase {
             XCTAssertNotNil(uid)
             XCTAssertNotNil(name)
             XCTAssertEqual(AudioInputDevices.uid(of: id), uid)
+
+            // Test transport queries on real hardware device ID
+            _ = AudioInputDevices.transportType(of: id)
+            _ = AudioInputDevices.isBluetooth(id: id)
+            if let uid {
+                _ = AudioInputDevices.isBluetooth(uid: uid)
+            }
         }
+        _ = AudioInputDevices.isCurrentDefaultBluetooth()
+        XCTAssertFalse(AudioInputDevices.isBluetooth(id: 0))
+        XCTAssertFalse(AudioInputDevices.isBluetooth(uid: "non-existent-uid"))
     }
 
     func testPreferredInputSettings() {

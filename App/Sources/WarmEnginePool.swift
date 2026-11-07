@@ -52,6 +52,13 @@ final class WarmEnginePool {
         // Never touch the mic stack before the user has granted access: doing so
         // would trigger the permission prompt out of nowhere.
         guard AVCaptureDevice.authorizationStatus(for: .audio) == .authorized else { return }
+        // Never prewarm on Bluetooth devices during idle.
+        // Initializing AUHAL/inputNode on Bluetooth forces CoreAudio to engage
+        // HFP/SCO (8kHz mono), which degrades headphone output audio quality.
+        guard !AudioInputDevices.isCurrentDefaultBluetooth() else {
+            Log.audio.info("WarmEnginePool: skipping idle prewarm on Bluetooth device (preserves A2DP audio quality)")
+            return
+        }
         prewarmTask = Task.detached(priority: .utility) { [weak self] in
             let engine = AudioCaptureEngine()
             engine.prewarm()
@@ -68,7 +75,7 @@ final class WarmEnginePool {
                     return
                 }
                 self.prewarmTask = nil
-                if self.spare == nil {
+                if self.spare == nil, engine.prewarmed {
                     self.spare = engine
                 } else {
                     engine.cancel()

@@ -129,6 +129,10 @@ public final class AudioCaptureEngine: AudioCapturing {
     /// engine.start(). Safe to call repeatedly; cheap when already warm.
     public func prewarm() {
         guard !isPrewarmed else { return }
+        if let defaultDev = AudioDeviceQuery.defaultInputDevice(), AudioInputDevices.isBluetooth(id: defaultDev) {
+            Log.audio.info("prewarm skipped: default input device is Bluetooth (preserves A2DP audio quality)")
+            return
+        }
         do {
             try buildEngine(reason: "prewarm", start: false)
             isPrewarmed = true

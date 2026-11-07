@@ -5,12 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.6.1] - 2026-11-07
 
 ### Fixed
 - **Bluetooth Headphone Audio Quality Drop on Connection:**
-  - Prevented idle capture graph prewarming on Bluetooth audio devices, eliminating involuntary transitions into low-quality Hands-Free Profile (HFP/SCO 8kHz mono) when connecting headphones.
-  - Automatically re-asserts user's preferred dedicated microphone on hardware route changes to prevent macOS from hijacking default input to newly connected Bluetooth headphones.
+  - Prevented idle capture graph prewarming on Bluetooth audio devices in `WarmEnginePool` and `AudioCaptureEngine`, eliminating involuntary transitions into low-quality Hands-Free Profile (HFP/SCO 8kHz mono) when connecting headphones.
+  - Automatically re-asserts user's preferred dedicated microphone on hardware route changes in `DictationController` to prevent macOS from hijacking default input to newly connected Bluetooth headphones.
 
 ## [0.6.0] - 2026-10-29
 

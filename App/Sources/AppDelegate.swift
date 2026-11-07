@@ -108,8 +108,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var pendingLaunchURLs: [URL] = []
 
     @objc private func handleGetURL(_ event: NSAppleEventDescriptor, withReplyEvent reply: NSAppleEventDescriptor) {
-        guard let urlString = event.paramDescriptor(forKeyword: keyDirectObject)?.stringValue,
-              let url = URL(string: urlString) else { return }
+        guard let urlString = event.paramDescriptor(forKeyword: keyDirectObject)?.stringValue?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !urlString.isEmpty,
+              urlString.count <= 1024,
+              let url = URL(string: urlString),
+              let scheme = url.scheme?.lowercased(),
+              ["sayo", "jot"].contains(scheme) else {
+            Log.session.warning("handleGetURL: rejected invalid or unsupported URL event")
+            return
+        }
         guard dictationController != nil else {
             pendingLaunchURLs.append(url)
             return

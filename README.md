@@ -17,7 +17,6 @@ This is an independent open-source fork and not an officially supported Google p
 > [!TIP]
 > **Sayo Enhancements (v0.6.1):**
 > - **Bluetooth Headphone A2DP Protection:** Eliminates automatic drops into low-quality mono Hands-Free Profile (HFP/SCO) when connecting Bluetooth headphones, preserving crisp stereo playback.
-> - **Universal Binary Support:** Runs natively on both Intel (`x86_64`) and Apple Silicon (`arm64`) Macs.
 > - **CoreAudio Stability:** Eliminates background audio engine teardown crashes during device switches, headphone changes, and sleep/wake.
 > - **Voice Snippets & Text Expander:** Spoken trigger phrases automatically expand into templates or long text via Settings → Dictionary.
 > - **History Markdown Export & Audio Scrubbing:** Export transcripts to Markdown with one click and scrub audio with 1x-2x playback speeds in History.

@@ -23,7 +23,6 @@ import JotCore
 /// Your data (History, Dictionary) on top; app configuration below.
 @MainActor
 final class MainWindowController: NSWindowController {
-    private var hosting: NSHostingView<MainView>?
     private let model: MainWindowModel
     private var titleObserver: AnyCancellable?
 

@@ -173,6 +173,33 @@ struct DictionaryView: View {
         .listStyle(.inset)
         .scrollContentBackground(.hidden)
         .searchable(text: $search, placement: .automatic, prompt: "Search")
+        .overlay {
+            if filtered.isEmpty && !entries.isEmpty {
+                searchEmptyState
+            }
+        }
+    }
+
+    private var searchEmptyState: some View {
+        VStack(spacing: JotUI.Spacing.s) {
+            Spacer()
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 28))
+                .foregroundStyle(JotUI.Colors.onSurfaceVariant)
+            Text("No results for “\(search)”")
+                .font(JotUI.TypeScale.title(grad: grad))
+                .foregroundStyle(JotUI.Colors.onSurface)
+            Text("Check your spelling or clear the search filter.")
+                .font(JotUI.TypeScale.body(grad: grad))
+                .foregroundStyle(JotUI.Colors.onSurfaceVariant)
+            Button("Clear Search") {
+                search = ""
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private var emptyState: some View {

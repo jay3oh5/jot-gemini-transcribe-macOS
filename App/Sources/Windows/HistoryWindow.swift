@@ -99,7 +99,21 @@ struct HistoryPane: View {
                 TextField("Search your dictations", text: $query)
                     .textFieldStyle(.plain)
                     .font(JotUI.TypeScale.body(grad: grad))
+                    .accessibilityLabel("Search your dictations")
                     .onChange(of: query) { _, _ in reload() }
+                if !query.isEmpty {
+                    Button {
+                        query = ""
+                        reload()
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 12))
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Clear search")
+                    .accessibilityLabel("Clear search")
+                }
             }
             .padding(.horizontal, JotUI.Spacing.s)
             .padding(.vertical, 7)
@@ -368,18 +382,35 @@ struct HistoryPane: View {
     private var emptyState: some View {
         VStack(spacing: JotUI.Spacing.m) {
             Spacer()
-            HStack(spacing: 5) {
-                ForEach(0..<4, id: \.self) { index in
-                    RoundedRectangle(cornerRadius: 3)
-                        .fill(JotUI.Colors.brandQuad[index])
-                        .frame(width: 6, height: [18, 30, 24, 14][index])
+            if query.isEmpty {
+                HStack(spacing: 5) {
+                    ForEach(0..<4, id: \.self) { index in
+                        RoundedRectangle(cornerRadius: 3)
+                            .fill(JotUI.Colors.brandQuad[index])
+                            .frame(width: 6, height: [18, 30, 24, 14][index])
+                    }
                 }
+                Text("Nothing here yet")
+                    .font(JotUI.TypeScale.title(grad: grad))
+                Text("Hold fn and say hello.")
+                    .font(JotUI.TypeScale.body(grad: grad))
+                    .foregroundStyle(.secondary)
+            } else {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 28))
+                    .foregroundStyle(.secondary)
+                Text("No results for “\(query)”")
+                    .font(JotUI.TypeScale.title(grad: grad))
+                Text("Check your spelling or clear the search filter.")
+                    .font(JotUI.TypeScale.body(grad: grad))
+                    .foregroundStyle(.secondary)
+                Button("Clear Search") {
+                    query = ""
+                    reload()
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
             }
-            Text("Nothing here yet")
-                .font(JotUI.TypeScale.title(grad: grad))
-            Text("Hold fn and say hello.")
-                .font(JotUI.TypeScale.body(grad: grad))
-                .foregroundStyle(.secondary)
             Spacer()
         }
         .frame(maxWidth: .infinity)

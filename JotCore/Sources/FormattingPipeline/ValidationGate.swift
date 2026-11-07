@@ -116,20 +116,32 @@ public enum ValidationGate {
             .filter { !$0.isEmpty }
     }
 
+    // Performance optimization: Precompile a single unified regex and map for number
+    // word replacement rather than repeatedly compiling and executing 18 separate regex passes
+    // on every invocation of normalize(_:) (which runs 4x per validate call).
+    private static let numberWordRegex = try! NSRegularExpression(
+        pattern: #"\b(zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|twenty|thirty|forty|fifty|hundred)\b"#
+    )
+
+    private static let numberWordMap: [String: String] = [
+        "zero": "0", "one": "1", "two": "2", "three": "3", "four": "4",
+        "five": "5", "six": "6", "seven": "7", "eight": "8", "nine": "9",
+        "ten": "10", "eleven": "11", "twelve": "12", "twenty": "20",
+        "thirty": "30", "forty": "40", "fifty": "50", "hundred": "100",
+    ]
+
     static func normalize(_ text: String) -> String {
         var s = text.lowercased()
-        for (word, digit) in numberWords {
-            s = s.replacingOccurrences(of: "\\b\(word)\\b", with: digit, options: .regularExpression)
+        let matches = numberWordRegex.matches(in: s, range: NSRange(s.startIndex..., in: s)).reversed()
+        for match in matches {
+            guard let range = Range(match.range, in: s) else { continue }
+            let word = String(s[range])
+            if let digit = numberWordMap[word] {
+                s.replaceSubrange(range, with: digit)
+            }
         }
         return s
     }
-
-    private static let numberWords: [(String, String)] = [
-        ("zero", "0"), ("one", "1"), ("two", "2"), ("three", "3"), ("four", "4"),
-        ("five", "5"), ("six", "6"), ("seven", "7"), ("eight", "8"), ("nine", "9"),
-        ("ten", "10"), ("eleven", "11"), ("twelve", "12"), ("twenty", "20"),
-        ("thirty", "30"), ("forty", "40"), ("fifty", "50"), ("hundred", "100"),
-    ]
 
     static func trigramSimilarity(_ a: String, _ b: String) -> Double {
         let ta = trigrams(a), tb = trigrams(b)

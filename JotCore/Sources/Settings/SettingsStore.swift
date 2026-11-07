@@ -44,10 +44,20 @@ public struct SettingsStore: Sendable {
     /// Single source of truth for endpoint-override validity — the Settings UI
     /// warning and the effective config MUST use the same predicate, or one of
     /// them lies about which endpoint is in use.
+    ///
+    /// Security validation:
+    /// - Caps input length (max 2048 chars) to guard against DoS / excessive allocation.
+    /// - Restricts schemes strictly to http / https.
+    /// - Requires a non-empty, trimmed hostname (prevents hostless URLs like `https://`
+    ///   or `http:///path` which cause malformed requests or SSRF ambiguities).
     public static func usableEndpointURL(_ raw: String?) -> URL? {
-        guard let raw = raw?.trimmingCharacters(in: .whitespacesAndNewlines), !raw.isEmpty,
+        guard let raw = raw?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !raw.isEmpty,
+              raw.count <= 2048,
               let url = URL(string: raw),
-              let scheme = url.scheme?.lowercased(), ["http", "https"].contains(scheme) else {
+              let scheme = url.scheme?.lowercased(), ["http", "https"].contains(scheme),
+              let host = url.host?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !host.isEmpty else {
             return nil
         }
         return url

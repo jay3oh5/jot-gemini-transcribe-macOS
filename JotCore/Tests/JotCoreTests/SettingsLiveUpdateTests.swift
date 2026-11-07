@@ -70,6 +70,40 @@ final class SettingsLiveUpdateTests: XCTestCase {
         settings.setSmartCleanupPass(true)
         XCTAssertEqual(settings.recordGateTrip(), 1)
     }
+
+    func testUsableEndpointURLValidation() {
+        // Valid endpoints
+        XCTAssertEqual(
+            SettingsStore.usableEndpointURL("https://generativelanguage.googleapis.com"),
+            URL(string: "https://generativelanguage.googleapis.com")
+        )
+        XCTAssertEqual(
+            SettingsStore.usableEndpointURL("http://localhost:8080/v1"),
+            URL(string: "http://localhost:8080/v1")
+        )
+        XCTAssertEqual(
+            SettingsStore.usableEndpointURL("  https://my-proxy.internal:443  "),
+            URL(string: "https://my-proxy.internal:443")
+        )
+
+        // Invalid: missing host
+        XCTAssertNil(SettingsStore.usableEndpointURL("https://"))
+        XCTAssertNil(SettingsStore.usableEndpointURL("http:///path"))
+
+        // Invalid: unsupported / dangerous schemes
+        XCTAssertNil(SettingsStore.usableEndpointURL("file:///etc/passwd"))
+        XCTAssertNil(SettingsStore.usableEndpointURL("javascript:alert(1)"))
+        XCTAssertNil(SettingsStore.usableEndpointURL("data:text/plain,hello"))
+
+        // Invalid: empty or blank
+        XCTAssertNil(SettingsStore.usableEndpointURL(nil))
+        XCTAssertNil(SettingsStore.usableEndpointURL(""))
+        XCTAssertNil(SettingsStore.usableEndpointURL("   \n\t  "))
+
+        // Invalid: exceeds length limits (DoS guard)
+        let oversized = "https://example.com/" + String(repeating: "a", count: 2050)
+        XCTAssertNil(SettingsStore.usableEndpointURL(oversized))
+    }
 }
 
 final class DictionaryImportTests: XCTestCase {
